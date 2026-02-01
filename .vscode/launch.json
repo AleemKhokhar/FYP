@@ -1,0 +1,37 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Django: Server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\manage.py",
+            "args": ["runserver"],
+            "django": true,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "Starting development server at (https?://\\S+|\\d+\\.\\d+\\.\\d+\\.\\d+:\\d+/)",
+                "uriFormat": "%s",
+                "webRoot": "${workspaceFolder}" 
+            }
+        },
+        {
+            "name": "Django: LiveReload",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\manage.py",
+            "args": ["livereload"],
+            "django": true
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Full Django Debug",
+            "configurations": [
+                "Django: LiveReload", // 1. Start the Watcher FIRST
+                "Django: Server"      // 2. Start the Server SECOND
+            ],
+            "stopAll": true
+        }
+    ]
+}
