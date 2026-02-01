@@ -1,0 +1,19 @@
+<html>
+<head><title>Search Results</title></head>
+<body>
+    <h1>Results for: {{ query }}</h1>
+    <a href="{% url 'home' %}">Back to Search</a>
+
+    <div class="results-container">
+        {% for game in games %}
+            <div class="game-card">
+                <h3>{{ game.name }}</h3>
+                <img src="{{ game.background_image }}" width="200">
+                <p>Rating: {{ game.rating }}</p>
+            </div>
+        {% empty %}
+            <p>No games found.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>
