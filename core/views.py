@@ -6,15 +6,31 @@ def home(request):
     return render(request, "core/home.html")
 
 def game_search(request):
-    query = request.GET.get('q')
-    api_key = '53d74ce63dbd4a3794ac77648e8edfc2'
-    print(f"DEBUG: User searched for {query}")
+    username = request.GET.get('q')
+    platform = request.GET.get('platform')
+    api_key = '6985c7e9-4313-40ad-ac49-507f9dbb1ba0'
     
-    url = f"https://api.rawg.io/api/games?key={api_key}&search={query}"
+    url = f"https://api.fortnitetracker.com/v1/profile/{platform}/{username}"
     
-    response = requests.get(url)
+    headers = {
+        'TRN-Api-Key': api_key,
+        'Accept': 'application/json'
+    }
+    response = requests.get(url, headers=headers)
     data = response.json()
-    games = data.get('results', [])
-    if games:
-        print(f"Top result: {games[0]['name']}")
-    return render(request, 'core/results.html', {'games': games, 'query': query})
+    
+    stats_list = data.get('lifeTimeStats', [])
+    
+    time_played = "Not Found"
+    for s in stats_list:
+        if s['key'] == 'Time Played':
+            time_played = s['value']
+    
+    print(f"DEBUG: Found {time_played} for {username}")
+    
+    return render(request, 'core/results.html', {
+        'username': username,
+        'platform': platform,
+        'time_played': time_played,
+        'all_stats': stats_list
+    })

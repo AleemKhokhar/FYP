@@ -9,8 +9,16 @@
         <a class="active" href="#home">Home</a>
 
         <form action="/search/" method="GET">
-            <input type="text" name="q" placeholder="Search..">
-            <button type="submit">Search</button>
+            <label for="username">Player Search:</Label>
+            <input type="text" name="q" placeholder="Enter Username">
+            <select name="platform">
+                <option value="pc">PC (Epic/Steam)</option>
+                <option value="xbl">Xbox</option>
+                <option value="psn">PlayStation</option>
+            </select>
+
+            <button type="submit">View Player Stats</button>
+            
         </form>
     </div>
 
