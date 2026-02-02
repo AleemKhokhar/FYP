@@ -1,28 +1,104 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Homepage</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GamerTracker | Home</title>
+    <style>
+        /* Shared Neon Theme */
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --accent: #00ff88; 
+            --text-secondary: #aaaaaa;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Centered Search Hero */
+        .hero-section {
+            text-align: center;
+            background: var(--card-bg);
+            padding: 50px;
+            border-radius: 20px;
+            border: 1px solid #333;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        h1 span { color: var(--accent); }
+
+        p { color: var(--text-secondary); margin-bottom: 30px; }
+
+        /* Modern Form Styling */
+        form { display: flex; flex-direction: column; gap: 15px; }
+
+        input, select {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus { border-color: var(--accent); }
+
+        button {
+            background: var(--accent);
+            color: black;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+        }
+    </style>
 </head>
 <body>
 
-    <div class="navbar">
-        <a class="active" href="#home">Home</a>
+    <div class="hero-section">
+        <h1>Gamer<span>Tracker</span></h1>
+        <p>Instant Fortnite Stats & Lifetime Metrics</p>
 
         <form action="/search/" method="GET">
-            <label for="username">Player Search:</Label>
-            <input type="text" name="q" placeholder="Enter Username">
+            <input type="text" name="q" placeholder="Enter Fortnite Username" required>
+            
             <select name="platform">
-                <option value="pc">PC (Epic/Steam)</option>
-                <option value="xbl">Xbox</option>
-                <option value="psn">PlayStation</option>
+                <option value="epic">PC (Epic Games)</option>
+                <option value="xbl">Xbox Live</option>
+                <option value="psn">PlayStation Network</option>
             </select>
 
-            <button type="submit">View Player Stats</button>
-            
+            <button type="submit">View Lifetime Stats</button>
         </form>
     </div>
 
-    <h1 class="Homepage-title">Homepage</h1>
 </body>
-
 </html>
