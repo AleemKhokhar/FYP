@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-
+{% load static %}
 <html lang="en">
 
 <head>
@@ -10,188 +10,27 @@
 
     <title>GamerTracker | Home</title>
 
-    <style>
-
-        :root {
-
-            --bg-color: #121212;
-
-            --card-bg: #1e1e1e;
-
-            --accent: #00ff88;
-
-            --text-secondary: #aaaaaa;
-
-        }
-
-
-
-        body {
-
-            background-color: var(--bg-color);
-
-            color: white;
-
-            font-family: 'Segoe UI', sans-serif;
-
-            margin: 0;
-
-            display: flex;
-
-            justify-content: center;
-
-            align-items: center;
-
-            height: 100vh;
-
-            overflow: hidden;
-
-        }
-
-
-
-        .hero-section {
-
-            text-align: center;
-
-            background: var(--card-bg);
-
-            padding: 50px;
-
-            border-radius: 20px;
-
-            border: 1px solid #333;
-
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-
-            max-width: 500px;
-
-            width: 90%;
-
-        }
-
-
-
-        h1 {
-
-            font-size: 3rem;
-
-            margin-bottom: 10px;
-
-            letter-spacing: -1px;
-
-        }
-
-
-
-        h1 span { color: var(--accent); }
-
-
-
-        p { color: var(--text-secondary); margin-bottom: 30px; }
-
-
-
-        form { display: flex; flex-direction: column; gap: 15px; }
-
-
-
-        input, select {
-
-            background: #2a2a2a;
-
-            border: 1px solid #444;
-
-            padding: 15px;
-
-            border-radius: 8px;
-
-            color: white;
-
-            font-size: 1rem;
-
-            outline: none;
-
-            transition: border-color 0.3s;
-
-        }
-
-
-
-        input:focus, select:focus { border-color: var(--accent); }
-
-
-
-        button {
-
-            background: var(--accent);
-
-            color: black;
-
-            border: none;
-
-            padding: 15px;
-
-            border-radius: 8px;
-
-            font-weight: bold;
-
-            font-size: 1.1rem;
-
-            cursor: pointer;
-
-            transition: transform 0.2s, box-shadow 0.2s;
-
-        }
-
-
-
-        button:hover {
-
-            transform: scale(1.02);
-
-            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
-
-        }
-
-
-
-        .history-pill {
-
-            color: var(--accent);
-
-            text-decoration: none;
-
-            font-size: 0.9rem;
-
-            background: #2a2a2a;
-
-            padding: 5px 12px;
-
-            border-radius: 15px;
-
-            border: 1px solid #444;
-
-            transition: all 0.2s;
-
-        }
-
-
-
-        .history-pill:hover {
-
-            background: #333;
-
-            border-color: var(--accent);
-
-        }
-
-    </style>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
 
 </head>
 
 <body>
 
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{% url 'home' %}" class="logo">Gamer<span>Tracker</span></a>
+            <div class="nav-links">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'dashboard' %}">Dashboard</a>
+                    <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
+                {% else %}
+                    <a href="{% url 'login' %}">Login</a>
+                    <a href="{% url 'signup' %}">Sign Up</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
 
 
     <div class="hero-section">

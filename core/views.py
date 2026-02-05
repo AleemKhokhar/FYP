@@ -1,8 +1,11 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponseBadRequest
 import os
 import requests
-
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from .models import GameStat
 def home(request):
     history = request.session.get('recent_searches', [])
     return render(request, "core/home.html", {'history': history})
@@ -53,7 +56,7 @@ def game_search(request):
             minutes = overall.get("minutesPlayed") or 0
             time_played = f"{round(minutes / 60)} Hours" if minutes else "Not Available"
             all_stats = [{"key": k, "value": v} for k, v in overall.items()]
-
+        
         return render(request, "core/results.html", {
             "username": username,
             "platform": platform,
@@ -69,9 +72,50 @@ def game_search(request):
             "all_stats": [],
             "error": f"Network error: {e}"
         })
-from django.shortcuts import redirect
+
 
 def clear_history(request):
     if 'recent_searches' in request.session:
         del request.session['recent_searches']
     return redirect('home')
+
+def login_view(request):
+    if request.method == "POST":
+        u = request.POST.get('username')
+        p = request.POST.get('password')
+        user = authenticate(username=u, password=p)
+        if user is not None:
+            login(request, user)
+            return redirect('dashboard')
+    return render(request, 'core/login.html')
+def signup_view(request):
+    if request.method == "POST":
+        u = request.POST.get('username')
+        p = request.POST.get('password')
+        print(f"I caught the data: {u}")
+        User.objects.create_user(username=u, password=p)
+        return redirect('home')
+    return render(request, 'core/signup.html')
+def logout_view(request):
+    logout(request)
+    return redirect('login')
+@login_required(login_url='login')
+def dashboard(request):
+    user_stats = GameStat.objects.filter(user=request.user).order_by('-date_saved')
+    return render(request, 'core/dashboard.html', {'saved_games': user_stats})
+@login_required
+def link_account(request):
+    if request.method == "POST":
+        game_u = request.POST.get('game_username')
+        plat = request.POST.get('platform')
+        time = request.POST.get('time_played')
+        
+        GameStat.objects.update_or_create(
+            user=request.user,
+            defaults={
+                'game_username': game_u,
+                'platform': plat,
+                'time_played': time
+            }
+        )
+        return redirect('dashboard')

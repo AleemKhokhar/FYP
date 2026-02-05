@@ -1,0 +1,36 @@
+{% load static %}
+<html>
+    <head>
+        <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    </head>
+    <body>
+        <div class="hero-section">
+            <h1>Gamer<span>Dashboard</span></h1>
+            <p>Welcome back, <strong>{{ user.username }}</strong>!</p>
+
+            <div class="dashboard-container">
+                <h3>Your Saved Stats</h3>
+
+                {% for game in saved_games %}
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <strong>{{ game.game_username }}</strong>
+                            <span class="platform-tag">{{ game.platform }}</span>
+                        </div>
+                        <div class="stat-details">
+                            <p>Time Played: {{ game.time_played }}</p>
+                            <small class="timestamp">Saved on: {{ game.date_saved|date:"d M Y" }}</small>
+                        </div>
+                    </div>
+                {% empty %}
+                <p class="empty-msg">No games tracked yet. Go search to add one!</p>
+                {% endfor %}
+                </div>
+                <div class="dashboard-actions">
+                    <a href="{% url 'home' %}" class="btn">Search New Game</a>
+                    <a href="{% url 'logout' %}" class="logout-link">Logout</a>
+                </div>
+            </div>
+    </div>
+    </body>
+</html>
