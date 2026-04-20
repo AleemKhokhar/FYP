@@ -9,4 +9,5 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('logout/', views.logout_view, name='logout'),
     path('link-account/', views.link_account, name='link_account'),
+    path('delete/<int:stat_id>/', views.delete_account, name='delete_account'),
 ]

@@ -1,6 +1,9 @@
 {% load static %}
-<html>
+<html lang="en">
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard - GamerTracker</title>
         <link rel="stylesheet" href="{% static 'css/style.css' %}">
     </head>
     <body>
@@ -10,27 +13,49 @@
 
             <div class="dashboard-container">
                 <h3>Your Saved Stats</h3>
-
-                {% for game in saved_games %}
-                    <div class="stat-card">
-                        <div class="stat-info">
-                            <strong>{{ game.game_username }}</strong>
-                            <span class="platform-tag">{{ game.platform }}</span>
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                    {% for game in saved_games %}
+                        <div class="stat-card" style="position: relative;">
+                            <div class="stat-info">
+                                <strong>{{ game.game_username }}</strong>
+                                <span class="platform-tag">{{ game.platform|upper }}</span>
+                            </div>
+                            <div class="stat-details">
+                                <p>{{ game.time_played }}</p>
+                                <small class="timestamp">Saved on: {{ game.date_saved|date:"d M Y" }}</small>
+                            </div>
+                            <a href="{% url 'delete_account' game.id %}" style="position: absolute; top: 10px; right: 10px; color: #ff4444; font-size: 0.7rem; text-decoration: none;">Remove</a>
                         </div>
-                        <div class="stat-details">
-                            <p>Time Played: {{ game.time_played }}</p>
-                            <small class="timestamp">Saved on: {{ game.date_saved|date:"d M Y" }}</small>
-                        </div>
-                    </div>
-                {% empty %}
-                <p class="empty-msg">No games tracked yet. Go search to add one!</p>
-                {% endfor %}
+                    {% empty %}
+                        <p class="empty-msg">No games tracked yet. Go search to add one!</p>
+                    {% endfor %}
                 </div>
-                <div class="dashboard-actions">
+
+                <div class="ai-section" style="margin-top: 40px; border-top: 1px solid #333; padding-top: 30px;">
+                    <h3 style="color: #00ff88;">AI Teammate Recommendations</h3>
+                    <p style="font-size: 0.8rem; color: #888; margin-bottom: 20px;">Matches found using Cosine Similarity playstyle analysis</p>
+                    
+                    <div class="matches-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
+                        {% for match in matches %}
+                            <div class="match-card" style="background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid #333; border-left: 4px solid #00ff88;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <strong style="font-size: 1.1rem;">{{ match.username }}</strong>
+                                    <span style="color: #00ff88; font-weight: bold;">{{ match.score }}%</span>
+                                </div>
+                                <p style="font-size: 0.8rem; color: #aaa; margin: 5px 0;">Playing: {{ match.platform|title }}</p>
+                                <p style="font-size: 0.8rem; color: #888;">As: {{ match.game_name }}</p>
+                            </div>
+                        {% empty %}
+                            <p style="color: #666; font-style: italic;">Link an account to discover compatible teammates.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="dashboard-actions" style="margin-top: 40px;">
                     <a href="{% url 'home' %}" class="btn">Search New Game</a>
-                    <a href="{% url 'logout' %}" class="logout-link">Logout</a>
+                    <a href="{% url 'logout' %}" class="logout-link" style="margin-left: 20px; color: #888; text-decoration: none;">Logout</a>
                 </div>
             </div>
-    </div>
+        </div>
     </body>
 </html>

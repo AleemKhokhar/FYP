@@ -1,22 +1,13 @@
 <!DOCTYPE html>
 {% load static %}
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>GamerTracker | Home</title>
-
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    
-
 </head>
-
 <body>
-
     <nav class="navbar">
         <div class="nav-container">
             <a href="{% url 'home' %}" class="logo">Gamer<span>Tracker</span></a>
@@ -32,69 +23,46 @@
         </div>
     </nav>
 
-
     <div class="hero-section">
-
         <h1>Gamer<span>Tracker</span></h1>
-
-        <p>Instant Fortnite Stats & Lifetime Metrics</p>
-
-
-
+        <p>Real-time Statistics across multiple platforms</p>
+    
         <form action="/search/" method="GET">
-
-            <input type="text" name="q" placeholder="Enter Fortnite Username" required>
-
-            <select name="platform">
-
-                <option value="epic">PC (Epic Games)</option>
-
-                <option value="xbl">Xbox Live</option>
-
-                <option value="psn">PlayStation Network</option>
-
+            <select name="game_choice" required>
+                <option value="" disabled selected>Select Game</option>
+                <option value="fortnite">Fortnite</option>
+                <option value="steam">Steam Profile</option>
+                <option value="clash">Clash of Clans</option>
+                <option value="hypixel">Hypixel (MC)</option>
             </select>
-
-            <button type="submit">View Lifetime Stats</button>
-
+    
+            <input type="text" name="username" placeholder="Enter Username or ID" required>
+    
+            <select name="platform">
+                <option value="epic">Epic / General</option>
+                <option value="xbl">Xbox Live</option>
+                <option value="psn">PlayStation Network</option>
+            </select>
+    
+            <button type="submit">View Live Stats</button>
         </form>
-
-
-
+    
         {% if history %}
-
-    <div style="margin-top: 30px; border-top: 1px solid #333; padding-top: 20px;">
-
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-
-            <p style="font-size: 0.8rem; text-transform: uppercase; color: #888; margin: 0;">Recent Searches</p>
-
-            <a href="{% url 'clear_history' %}" style="color: #ff4444; font-size: 0.7rem; text-decoration: none; text-transform: uppercase; font-weight: bold;">Clear All</a>
-
+        <div style="margin-top: 30px; border-top: 1px solid #333; padding-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <p style="font-size: 0.8rem; text-transform: uppercase; color: #888; margin: 0;">Recent Searches</p>
+                <a href="{% url 'clear_history' %}" style="color: #ff4444; font-size: 0.7rem; text-decoration: none; text-transform: uppercase; font-weight: bold;">Clear All</a>
+            </div>
+    
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                {% for name in history %}
+                    <a href="/search/?game_choice=fortnite&username={{ name }}&platform=epic" class="history-pill">
+                       {{ name }}
+                    </a>
+                {% endfor %}
+            </div>
         </div>
-
-
-
-        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-
-            {% for name in history %}
-
-                <a href="/search/?q={{ name }}&platform=epic" class="history-pill">
-
-                   {{ name }}
-
-                </a>
-
-            {% endfor %}
-
-        </div>
-
+        {% endif %}
     </div>
-
-{% endif %}
-
-
-
 </body>
-
 </html>

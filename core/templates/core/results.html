@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ username }} - Stats View</title>
+    <title>{{ username }} - {{ game_choice|title }} Stats</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}" />
   </head>
   <body>
@@ -21,54 +21,65 @@
             </div>
         </div>
     </nav>
+
     <div class="container">
       <div class="header">
         <h1>
           {{ username }}
-          <span class="platform-tag">{{ platform|upper }}</span>
+          <span class="platform-tag">{{ game_choice|upper }}</span>
         </h1>
         <a href="{% url 'home' %}" class="back-btn">← Search Again</a>
       </div>
 
-      <div class="hero-card">
-        <h2>Total Time Played</h2>
-        <div class="big-stat">{{ time_played }}</div>
-      </div>
+      {% if error %}
+        <div class="hero-card" style="border-color: #ff4444;">
+            <h2>Error</h2>
+            <div class="big-stat" style="font-size: 1.5rem;">{{ error }}</div>
+        </div>
+      {% elif stats %}
+        <div class="hero-card">
+            {% if game_choice == 'fortnite' %}
+                <h2>Total Time Played</h2>
+            {% elif game_choice == 'clash' %}
+                <h2>Village Status</h2>
+            {% else %}
+                <h2>Primary Metric</h2>
+            {% endif %}
+            <div class="big-stat">{{ stats.main_stat }}</div>
+            <p style="color: var(--primary-color); font-weight: bold;">
+                {{ stats.detail_label }}: {{ stats.detail_value }}
+            </p>
+        </div>
 
-      <div class="stats-grid">
-        {% for stat in all_stats %}
-            {% if stat.key != 'minutesPlayed' and stat.key != 'lastModified' %}
+        <div class="stats-grid">
+            {% for stat in stats.raw_stats %}
                 <div class="stat-card">
                     <span class="stat-label">{{ stat.key }}</span>
                     <span class="stat-value">{{ stat.value }}</span>
                 </div>
-            {% endif %}
-        {% endfor %}
-    </div>
-      {% if user.is_authenticated %}
-      <form
-        action="{% url 'link_account' %}"
-        method="POST"
-        style="margin-top: 20px"
-      >
-        {% csrf_token %}
-        <input type="hidden" name="game_username" value="{{ username }}" />
-        <input type="hidden" name="platform" value="{{ platform }}" />
-        <input type="hidden" name="time_played" value="{{ time_played }}" />
+            {% endfor %}
+        </div>
 
-        <button
-          type="submit"
-          class="btn"
-          style="background-color: var(--primary-color)"
-        >
-          Link to my dashboard
-        </button>
-      </form>
-      {% else %}
-      <p>
-        <a href="{% url 'login' %}">Log in</a> to save this account to your
-        dashboard!
-      </p>
+        {% if user.is_authenticated %}
+        <form action="{% url 'link_account' %}" method="POST" style="margin-top: 20px">
+            {% csrf_token %}
+            <input type="hidden" name="game_username" value="{{ username }}" />
+            <input type="hidden" name="game_choice" value="{{ game_choice }}" />
+            <input type="hidden" name="main_stat" value="{{ stats.main_stat }}" />
+            
+            <input type="hidden" name="m1" value="{{ stats.m1 }}" />
+            <input type="hidden" name="m2" value="{{ stats.m2 }}" />
+            <input type="hidden" name="m3" value="{{ stats.m3 }}" />
+
+            <button type="submit" class="btn" style="background-color: var(--primary-color); border: none; padding: 10px 20px; border-radius: 5px; color: white; cursor: pointer;">
+                Link to my dashboard
+            </button>
+        </form>
+        {% else %}
+        <p style="margin-top: 20px;">
+            <a href="{% url 'login' %}" style="color: var(--primary-color);">Log in</a> to save this account to your dashboard!
+        </p>
+        {% endif %}
       {% endif %}
     </div>
   </body>
