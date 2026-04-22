@@ -15,4 +15,7 @@ urlpatterns = [
     path('leaderboard/', views.leaderboard, name='leaderboard'),
     path('download-report/<int:stat_id>/', views.download_report, name='download_report'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
+    path('export-data/', views.export_user_data, name='export_data'),
+    path('delete-profile/', views.delete_user_profile, name='delete_profile'),
+    path('settings/', views.account_settings, name='account_settings'),
 ]

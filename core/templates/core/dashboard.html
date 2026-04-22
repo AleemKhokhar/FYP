@@ -149,6 +149,9 @@
                 <a href="{% url 'leaderboard' %}">Leaderboard</a>
                 <a href="{% url 'dashboard' %}" style="color: var(--accent) !important;">Dashboard</a>
                 <a href="{% url 'logout' %}">Logout</a>
+                <a href="{% url 'account_settings' %}" class="btn btn-primary">
+                    Account Settings
+                </a>
             </div>
         </div>
     </nav>
@@ -233,6 +236,24 @@
                     <p style="color: var(--text-dim); font-size: 0.9rem; font-style: italic;">Link more accounts to discover compatible teammates.</p>
                 </div>
                 {% endfor %}
+            </div>
+            <div class="gdpr-section" style="margin-top: 2rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+                <h3>Data Privacy & GDPR</h3>
+                <p>Under GDPR Article 20, you have the right to request a copy of your data in a machine-readable format.</p>
+                <a href="{% url 'export_data' %}" class="btn btn-secondary">
+                    Download My Data (JSON)
+                </a>
+            </div>
+            <div class="gdpr-danger-zone" style="margin-top: 2rem; padding: 1rem; border: 1px solid #ff4d4d; border-radius: 8px; background-color: #fff0f0;">
+                <h3 style="color: #d93025;">Right to be Forgotten</h3>
+                <p>Under GDPR Article 17, you may request the permanent erasure of your account. <strong>Warning: This action cannot be undone.</strong> All linked platforms, predictive scores, and account details will be immediately destroyed.</p>
+                
+                <form method="POST" action="{% url 'delete_profile' %}" onsubmit="return confirm('Are you absolutely sure you want to permanently delete your account and all data?');">
+                    {% csrf_token %}
+                    <button type="submit" style="background-color: #d93025; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                        Permanently Delete Account
+                    </button>
+                </form>
             </div>
         </div>
     </div>

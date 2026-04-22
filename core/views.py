@@ -28,6 +28,74 @@ from .ai_model import predict_performance
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from allauth.account.models import EmailAddress
+import json
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from .models import SavedGame
+from django.contrib.auth import logout
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from .forms import AccountUpdateForm
+
+@login_required
+def account_settings(request):
+    if request.method == 'POST':
+        form = AccountUpdateForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your account details have been updated successfully.")
+            return redirect('dashboard')
+    else:
+        form = AccountUpdateForm(instance=request.user)
+        
+    return render(request, 'core/account_settings.html', {'form': form})
+
+@login_required
+def delete_user_profile(request):
+    if request.method == 'POST':
+        user_to_delete = request.user
+        logout(request)
+        user_to_delete.delete()
+        messages.success(request, "Your account and all associated telemetry data have been permanently erased.")
+        return redirect('home')
+    
+    return redirect('dashboard')
+
+@login_required
+def export_user_data(request):
+    user_games = SavedGame.objects.filter(user=request.user)
+    
+    export_data = {
+        "account_info": {
+            "username": request.user.username,
+            "email": request.user.email,
+            "date_joined": request.user.date_joined.isoformat()
+        },
+        "telemetry_data": []
+    }
+    
+    for game in user_games:
+        export_data["telemetry_data"].append({
+            "platform": game.platform,
+            "game_username": game.game_username,
+            "time_played": game.time_played,
+            "ai_score": game.ai_score,
+            "raw_metrics": {
+                "m1": game.m1,
+                "m2": game.m2,
+                "m3": game.m3
+            },
+            "date_saved": game.date_saved.isoformat() if game.date_saved else None
+        })
+        
+    response = JsonResponse(export_data, json_dumps_params={'indent': 4})
+    response['Content-Disposition'] = f'attachment; filename="{request.user.username}_gamertracker_export.json"'
+    
+    return response
 
 
 

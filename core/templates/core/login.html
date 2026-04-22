@@ -12,7 +12,6 @@
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             width: 100%;
         }
-
         .signup-link {
             color: rgba(255, 255, 255, 0.6);
             text-decoration: none;
@@ -20,18 +19,15 @@
             transition: all 0.3s ease;
             letter-spacing: 0.5px;
         }
-
         .signup-link span {
             color: var(--accent);
             font-weight: 800;
             text-transform: uppercase;
             margin-left: 5px;
         }
-
         .signup-link:hover {
             color: white;
         }
-
         .signup-link:hover span {
             text-shadow: 0 0 10px var(--accent-glow);
         }
@@ -53,18 +49,21 @@
             <h1 style="margin-bottom: 10px;">Login</h1>
             <p style="color: var(--text-dim); margin-bottom: 30px;">Access your neural gaming profile</p>
             
+            {% if error %}
+                <p style="color: #ff4444; font-weight: bold; margin-bottom: 15px; text-align: center;">{{ error }}</p>
+            {% endif %}
+            
             <form method="POST" action="" style="width: 100%;">
                 {% csrf_token %}
                 <input type="text" name="username" placeholder="Username" required style="margin-bottom: 15px;" />
                 <input type="password" name="password" placeholder="Password" required style="margin-bottom: 25px;" />
                 <button type="submit" class="btn-primary" style="width: 100%;">Authorize Access</button>
             </form>
-            <div class="signup-link-wrapper" style="margin-top: 15px; border-top: none; padding-top: 0;">
-              <a href="{% url 'account_reset_password' %}" class="signup-link" style="font-size: 0.75rem;">
-                  Forgot your password? <span>Reset it</span>
-              </a>
-            </div>
+
             <div class="signup-link-wrapper">
+                <a href="{% url 'account_reset_password' %}" class="signup-link" style="font-size: 0.75rem; display: block; margin-bottom: 10px;">
+                    Forgot your password? <span>Reset it</span>
+                </a>
                 <a href="{% url 'signup' %}" class="signup-link">
                     Don't have an account? <span>Sign up</span>
                 </a>
