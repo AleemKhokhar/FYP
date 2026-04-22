@@ -1,86 +1,190 @@
 {% load static %}
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ username }} - {{ game_choice|title }} Stats</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
-  </head>
-  <body>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+            width: 100%;
+            margin-top: 40px;
+        }
+
+        .stat-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-bright);
+            border-radius: 24px;
+            padding: 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 160px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: white;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            line-height: 1.2;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .new-search-btn {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .new-search-btn:hover {
+            background: var(--accent);
+            color: black;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+    </style>
+</head>
+<body>
     <nav class="navbar">
         <div class="nav-container">
             <a href="{% url 'home' %}" class="logo">Gamer<span>Tracker</span></a>
             <div class="nav-links">
+                <a href="{% url 'leaderboard' %}">Leaderboard</a>
+                <a href="{% url 'player_compare' %}">Compare Players</a>
                 {% if user.is_authenticated %}
-                    <a href="{% url 'dashboard' %}">Dashboard</a>
-                    <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
+                <a href="{% url 'dashboard' %}">Dashboard</a>
+                <a href="{% url 'logout' %}">Logout</a>
                 {% else %}
-                    <a href="{% url 'login' %}">Login</a>
-                    <a href="{% url 'signup' %}">Sign Up</a>
+                <a href="{% url 'login' %}">Login</a>
+                <a href="{% url 'signup' %}">Sign Up</a>
                 {% endif %}
             </div>
         </div>
     </nav>
 
-    <div class="container">
-      <div class="header">
-        <h1>
-          {{ username }}
-          <span class="platform-tag">{{ game_choice|upper }}</span>
-        </h1>
-        <a href="{% url 'home' %}" class="back-btn">← Search Again</a>
-      </div>
-
-      {% if error %}
-        <div class="hero-card" style="border-color: #ff4444;">
-            <h2>Error</h2>
-            <div class="big-stat" style="font-size: 1.5rem;">{{ error }}</div>
+    <div class="container" style="max-width: 1100px; margin: 0 auto; padding: 40px 20px;">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <div style="display: flex; align-items: center;">
+                <h1 style="margin: 0; font-size: 3rem;">
+                    {{ username }}
+                    <span style="color: var(--accent); font-size: 1rem; border: 2px solid var(--accent); padding: 4px 12px; border-radius: 8px; vertical-align: middle; margin-left: 15px; font-weight: 800;">{{ game_choice|upper }}</span>
+                </h1>
+            </div>
+            <a href="{% url 'home' %}" class="new-search-btn">← New Search</a>
         </div>
-      {% elif stats %}
-        <div class="hero-card">
-            {% if game_choice == 'fortnite' %}
-                <h2>Total Time Played</h2>
-            {% elif game_choice == 'clash' %}
-                <h2>Village Status</h2>
-            {% else %}
-                <h2>Primary Metric</h2>
-            {% endif %}
-            <div class="big-stat">{{ stats.main_stat }}</div>
-            <p style="color: var(--primary-color); font-weight: bold;">
-                {{ stats.detail_label }}: {{ stats.detail_value }}
-            </p>
+
+        {% if error %}
+        <div class="hero-card" style="border-color: #ff4444 !important; width: 100%;">
+            <h2 style="color: #ff4444;">Error</h2>
+            <p>{{ error }}</p>
+        </div>
+        {% elif stats %}
+        <div class="hero-card" style="width: 100%; margin-top: 0; margin-bottom: 40px; text-align: center; padding: 40px;">
+            <div style="display: flex; justify-content: center; gap: 80px; margin-bottom: 40px;">
+                <div>
+                    <p class="recent-label" style="margin: 0; font-size: 0.7rem; letter-spacing: 2px;">{% if game_choice == 'fortnite' %}TOTAL TIME PLAYED{% elif game_choice == 'clash' %}VILLAGE STATUS{% else %}PRIMARY METRIC{% endif %}</p>
+                    <div style="font-size: 3.5rem; font-weight: 900; color: white;">{{ stats.main_stat }}</div>
+                </div>
+                <div>
+                    <p class="recent-label" style="margin: 0; font-size: 0.7rem; letter-spacing: 2px;">{{ stats.detail_label }}</p>
+                    <div style="font-size: 3.5rem; font-weight: 900; color: var(--accent);">{{ stats.detail_value }}</div>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px;">
+                <p class="recent-label" style="margin: 0; letter-spacing: 4px;">AI Performance Prediction</p>
+                <div id="ai-prediction-value" style="font-size: 8rem; font-weight: 900; color: var(--accent); text-shadow: 0 0 40px var(--accent-glow); line-height: 1; margin: 15px 0;">
+                    {{ stats.ai_score }}%
+                </div>
+                <p style="opacity: 0.7; font-size: 0.95rem; max-width: 550px; margin: 10px auto 0;">Neural Network analysis based on real-time combat data and historical performance metrics.</p>
+            </div>
+        </div>
+
+        <div class="dashboard-card" style="width: 100%; margin-bottom: 40px; text-align: left;">
+            <h3 style="color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; font-weight: 800;">AI Tactical Analysis</h3>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                {% for insight in stats.insights %}
+                <div style="display: flex; gap: 15px; background: rgba(255,255,255,0.04); padding: 20px; border-radius: 15px; border-left: 5px solid var(--accent);">
+                    <span style="color: var(--accent); font-weight: 900; font-size: 0.8rem; min-width: 80px;">[SYSTEM]</span>
+                    <span style="font-size: 1rem; line-height: 1.6; color: rgba(255,255,255,0.95);">{{ insight }}</span>
+                </div>
+                {% empty %}
+                <p style="color: var(--text-dim); font-style: italic;">Tactical data unavailable for this profile.</p>
+                {% endfor %}
+            </div>
         </div>
 
         <div class="stats-grid">
             {% for stat in stats.raw_stats %}
-                <div class="stat-card">
-                    <span class="stat-label">{{ stat.key }}</span>
-                    <span class="stat-value">{{ stat.value }}</span>
-                </div>
+            <div class="stat-card">
+                <span class="recent-label" style="margin: 0; font-size: 0.6rem; opacity: 0.6; letter-spacing: 1.5px;">{{ stat.key }}</span>
+                <span class="stat-value" id="stat-{{ stat.key }}">{{ stat.value }}</span>
+            </div>
             {% endfor %}
         </div>
 
         {% if user.is_authenticated %}
-        <form action="{% url 'link_account' %}" method="POST" style="margin-top: 20px">
+        <form action="{% url 'link_account' %}" method="POST" style="margin-top: 60px; width: 100%;">
             {% csrf_token %}
             <input type="hidden" name="game_username" value="{{ username }}" />
             <input type="hidden" name="game_choice" value="{{ game_choice }}" />
             <input type="hidden" name="main_stat" value="{{ stats.main_stat }}" />
-            
             <input type="hidden" name="m1" value="{{ stats.m1 }}" />
             <input type="hidden" name="m2" value="{{ stats.m2 }}" />
             <input type="hidden" name="m3" value="{{ stats.m3 }}" />
-
-            <button type="submit" class="btn" style="background-color: var(--primary-color); border: none; padding: 10px 20px; border-radius: 5px; color: white; cursor: pointer;">
-                Link to my dashboard
+            <input type="hidden" name="ai_score" value="{{ stats.ai_score }}" />
+            <button type="submit" class="btn-primary">
+                {% if is_linked %}Update Neural Link{% else %}Link to my dashboard{% endif %}
             </button>
         </form>
         {% else %}
-        <p style="margin-top: 20px;">
-            <a href="{% url 'login' %}" style="color: var(--primary-color);">Log in</a> to save this account to your dashboard!
-        </p>
+        <div class="hero-card" style="margin-top: 60px; padding: 25px; width: 100%; text-align: center;">
+            <p style="margin: 0; font-weight: 700;">
+                <a href="{% url 'login' %}" style="color: var(--accent); text-decoration: none; border-bottom: 2px solid var(--accent);">LOG IN</a> TO SAVE THIS ACCOUNT
+            </p>
+        </div>
         {% endif %}
-      {% endif %}
+        {% endif %}
     </div>
-  </body>
+
+    <script>
+        const username = "{{ username|escapejs }}";
+        const safeName = username.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const statSocket = new WebSocket(`${protocol}://${window.location.host}/ws/stats/${safeName}/`);
+
+        statSocket.onmessage = function (e) {
+            const data = JSON.parse(e.data);
+            if (data.stats.ai_score) {
+                const aiElem = document.getElementById("ai-prediction-value");
+                if (aiElem) aiElem.innerText = data.stats.ai_score + "%";
+            }
+            for (const [key, value] of Object.entries(data.stats)) {
+                const element = document.getElementById(`stat-${key}`);
+                if (element) element.innerText = value;
+            }
+        };
+
+        statSocket.onclose = function (e) { console.error("Socket closed unexpectedly"); };
+    </script>
+</body>
 </html>

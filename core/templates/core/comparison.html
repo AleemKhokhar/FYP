@@ -1,0 +1,223 @@
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Comparison - GamerTracker</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
+    <style>
+        .compare-wrapper {
+            max-width: 1100px;
+            width: 90%;
+            margin: 0 auto;
+            padding-top: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .search-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-bright);
+            border-radius: 32px;
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+            box-sizing: border-box;
+            margin-bottom: 40px;
+        }
+
+        .compare-inputs {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .vs-text {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--accent);
+            text-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .comparison-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            width: 100%;
+            margin-bottom: 30px;
+        }
+
+        .player-vs-card {
+            background: var(--glass);
+            border: 2px solid var(--glass-bright);
+            border-radius: 32px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .player-vs-card.winner {
+            border-color: var(--accent);
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .stat-comparison-table {
+            width: 100%;
+            background: var(--glass);
+            border: 1px solid var(--glass-bright);
+            border-radius: 24px;
+            padding: 30px;
+            margin-top: 20px;
+        }
+
+        .stat-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: 18px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .stat-row:last-child { border-bottom: none; }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 800;
+            width: 150px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: white;
+        }
+
+        .stat-value.high {
+            color: var(--accent);
+        }
+
+        .winner-label {
+            background: var(--accent);
+            color: black;
+            font-size: 0.65rem;
+            font-weight: 900;
+            padding: 4px 12px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{% url 'home' %}" class="logo">Gamer<span>Tracker</span></a>
+            <div class="nav-links">
+                <a href="{% url 'player_compare' %}" style="color: var(--accent) !important;">Compare</a>
+                <a href="{% url 'leaderboard' %}">Leaderboard</a>
+                {% if user.is_authenticated %}
+                <a href="{% url 'dashboard' %}">Dashboard</a>
+                <a href="{% url 'logout' %}">Logout</a>
+                {% else %}
+                <a href="{% url 'login' %}">Login</a>
+                <a href="{% url 'signup' %}">Sign Up</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="compare-wrapper">
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h1 style="font-size: 3.5rem; margin: 0;">Player <span>Comparison</span></h1>
+            <p style="color: var(--text-dim); margin-top: 10px;">Head-to-head performance analysis</p>
+        </div>
+
+        <div class="search-card">
+            <form method="GET" action="{% url 'player_compare' %}">
+                <div class="compare-inputs">
+                    <input type="text" name="user1" placeholder="First Player" required value="{{ user1 }}">
+                    <div class="vs-text">VS</div>
+                    <input type="text" name="user2" placeholder="Second Player" required value="{{ user2 }}">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 15px;">
+                    <select name="game_choice">
+                        <option value="fortnite" {% if game_choice == 'fortnite' %}selected{% endif %}>Fortnite</option>
+                        <option value="clash" {% if game_choice == 'clash' %}selected{% endif %}>Clash of Clans</option>
+                        <option value="steam" {% if game_choice == 'steam' %}selected{% endif %}>Steam</option>
+                    </select>
+                    <button type="submit" class="btn-primary" style="margin-top: 0;">Analyze Matchup</button>
+                </div>
+            </form>
+        </div>
+
+        {% if error %}
+        <div class="hero-card" style="border-color: #ff4444 !important; width: 100%; max-width: 800px; text-align: center;">
+            <p style="color: #ff4444; font-weight: 800; margin: 0;">{{ error }}</p>
+        </div>
+        {% endif %}
+
+        {% if data1 and data2 %}
+        <div class="comparison-cards">
+            <div class="player-vs-card {% if data1.ai_score > data2.ai_score %}winner{% endif %}">
+                {% if data1.ai_score > data2.ai_score %}<div class="winner-label">Higher Rated</div>{% endif %}
+                <h2 style="font-size: 2rem; margin: 0;">{{ user1 }}</h2>
+                <div style="font-size: 4.5rem; font-weight: 900; color: var(--accent); margin: 15px 0;">{{ data1.ai_score }}%</div>
+                <p class="recent-label">AI Efficiency Rating</p>
+            </div>
+
+            <div class="player-vs-card {% if data2.ai_score > data1.ai_score %}winner{% endif %}">
+                {% if data2.ai_score > data1.ai_score %}<div class="winner-label">Higher Rated</div>{% endif %}
+                <h2 style="font-size: 2rem; margin: 0;">{{ user2 }}</h2>
+                <div style="font-size: 4.5rem; font-weight: 900; color: var(--accent); margin: 15px 0;">{{ data2.ai_score }}%</div>
+                <p class="recent-label">AI Efficiency Rating</p>
+            </div>
+        </div>
+
+        <div class="stat-comparison-table">
+            <h3 style="text-align: center; color: var(--accent); letter-spacing: 3px; margin-bottom: 30px; font-size: 0.9rem;">DETAILED BREAKDOWN</h3>
+            
+            <div class="stat-row">
+                <div class="stat-value {% if data1.ai_score > data2.ai_score %}high{% endif %}">{{ data1.main_stat }}</div>
+                <div class="stat-label">Main Metric</div>
+                <div class="stat-value {% if data2.ai_score > data1.ai_score %}high{% endif %}">{{ data2.main_stat }}</div>
+            </div>
+
+            {% for s1 in data1.raw_stats %}
+            {% with current_key=s1.key %}
+                {% for s2 in data2.raw_stats %}
+                    {% if s2.key == current_key %}
+                    <div class="stat-row">
+                        <div class="stat-value">{{ s1.value }}</div>
+                        <div class="stat-label">{{ current_key }}</div>
+                        <div class="stat-value">{{ s2.value }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endwith %}
+            {% endfor %}
+        </div>
+
+        <div class="hero-card" style="margin-top: 40px; text-align: center; border: 2px solid var(--accent) !important; width: 100%; box-sizing: border-box; background: rgba(0,255,136,0.03) !important;">
+            <h3 style="font-size: 1.1rem; letter-spacing: 2px; margin-bottom: 10px;">TACTICAL VERDICT</h3>
+            <p style="font-size: 1.1rem; opacity: 0.9; margin: 0;">
+                {% if data1.ai_score > data2.ai_score %}
+                    <span style="color: var(--accent); font-weight: 900;">{{ user1 }}</span> is predicted to have the tactical advantage in this engagement.
+                {% elif data2.ai_score > data1.ai_score %}
+                    <span style="color: var(--accent); font-weight: 900;">{{ user2 }}</span> is predicted to have the tactical advantage in this engagement.
+                {% else %}
+                    Both players exhibit identical combat performance patterns.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

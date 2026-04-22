@@ -1,61 +1,295 @@
 {% load static %}
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Dashboard - GamerTracker</title>
-        <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    </head>
-    <body>
-        <div class="hero-section">
-            <h1>Gamer<span>Dashboard</span></h1>
-            <p>Welcome back, <strong>{{ user.username }}</strong>!</p>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - GamerTracker</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .dashboard-wrapper {
+            max-width: 1100px;
+            width: 95%;
+            margin: 0 auto;
+            padding-top: 50px;
+        }
 
-            <div class="dashboard-container">
-                <h3>Your Saved Stats</h3>
-                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                    {% for game in saved_games %}
-                        <div class="stat-card" style="position: relative;">
-                            <div class="stat-info">
-                                <strong>{{ game.game_username }}</strong>
-                                <span class="platform-tag">{{ game.platform|upper }}</span>
-                            </div>
-                            <div class="stat-details">
-                                <p>{{ game.time_played }}</p>
-                                <small class="timestamp">Saved on: {{ game.date_saved|date:"d M Y" }}</small>
-                            </div>
-                            <a href="{% url 'delete_account' game.id %}" style="position: absolute; top: 10px; right: 10px; color: #ff4444; font-size: 0.7rem; text-decoration: none;">Remove</a>
-                        </div>
-                    {% empty %}
-                        <p class="empty-msg">No games tracked yet. Go search to add one!</p>
-                    {% endfor %}
-                </div>
+        .welcome-section {
+            text-align: center;
+            margin-bottom: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-                <div class="ai-section" style="margin-top: 40px; border-top: 1px solid #333; padding-top: 30px;">
-                    <h3 style="color: #00ff88;">AI Teammate Recommendations</h3>
-                    <p style="font-size: 0.8rem; color: #888; margin-bottom: 20px;">Matches found using Cosine Similarity playstyle analysis</p>
-                    
-                    <div class="matches-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px;">
-                        {% for match in matches %}
-                            <div class="match-card" style="background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid #333; border-left: 4px solid #00ff88;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <strong style="font-size: 1.1rem;">{{ match.username }}</strong>
-                                    <span style="color: #00ff88; font-weight: bold;">{{ match.score }}%</span>
-                                </div>
-                                <p style="font-size: 0.8rem; color: #aaa; margin: 5px 0;">Playing: {{ match.platform|title }}</p>
-                                <p style="font-size: 0.8rem; color: #888;">As: {{ match.game_name }}</p>
-                            </div>
-                        {% empty %}
-                            <p style="color: #666; font-style: italic;">Link an account to discover compatible teammates.</p>
-                        {% endfor %}
-                    </div>
-                </div>
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--accent);
+            box-shadow: 0 0 25px var(--accent-glow);
+            margin-bottom: 20px;
+            background: var(--glass);
+        }
 
-                <div class="dashboard-actions" style="margin-top: 40px;">
-                    <a href="{% url 'home' %}" class="btn">Search New Game</a>
-                    <a href="{% url 'logout' %}" class="logout-link" style="margin-left: 20px; color: #888; text-decoration: none;">Logout</a>
-                </div>
+        .user-bio {
+            color: var(--text-dim);
+            font-size: 1rem;
+            max-width: 600px;
+            margin: 10px auto 0;
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        .chart-container {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-bright);
+            padding: 30px;
+            border-radius: 32px;
+            margin-bottom: 40px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .dashboard-stat-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-bright);
+            border-radius: 24px;
+            padding: 25px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-stat-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ff4444;
+            text-decoration: none;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.6;
+        }
+
+        .remove-btn:hover {
+            opacity: 1;
+        }
+
+        .platform-badge {
+            font-size: 0.65rem;
+            border: 1px solid var(--accent);
+            padding: 3px 10px;
+            border-radius: 6px;
+            color: var(--accent);
+            font-weight: 800;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .match-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid var(--accent);
+            padding: 20px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pdf-btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: rgba(255,255,255,0.05);
+            color: white;
+            text-decoration: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-top: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.2s ease;
+        }
+
+        .pdf-btn:hover {
+            background: white;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{% url 'home' %}" class="logo">Gamer<span>Tracker</span></a>
+            <div class="nav-links">
+                <a href="{% url 'player_compare' %}">Compare</a>
+                <a href="{% url 'leaderboard' %}">Leaderboard</a>
+                <a href="{% url 'dashboard' %}" style="color: var(--accent) !important;">Dashboard</a>
+                <a href="{% url 'logout' %}">Logout</a>
             </div>
         </div>
-    </body>
+    </nav>
+
+    <div class="dashboard-wrapper">
+        <div class="welcome-section">
+            {% if user.profile.avatar %}
+                <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="profile-avatar">
+            {% else %}
+                <img src="{% static 'images/default_avatar.png' %}" alt="Default" class="profile-avatar">
+            {% endif %}
+        
+            <div style="margin-bottom: 10px;">
+                <a href="{% url 'profile_edit' %}" style="color: var(--accent); text-decoration: none; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; border: 1px solid var(--glass-bright); padding: 5px 15px; border-radius: 50px; background: rgba(0, 255, 136, 0.05); transition: all 0.3s ease;">
+                    [ Edit Neural Identity ]
+                </a>
+            </div>
+        
+            <h1 style="font-size: 3.5rem; margin: 0;">Gamer<span>Dashboard</span></h1>
+            <p style="color: var(--text-dim); font-size: 1.2rem; margin-top: 5px;">
+                Welcome back, <span style="color: white; font-weight: 800;">{{ user.username }}</span>
+            </p>
+            
+            {% if user.profile.bio %}
+                <p class="user-bio">{{ user.profile.bio }}</p>
+            {% endif %}
+        </div>
+
+        <div class="chart-container">
+            <h3 style="color: var(--accent); letter-spacing: 2px; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 25px;">AI Performance Trends</h3>
+            <div style="height: 250px;">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 50px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 1.5rem;">Saved Profiles</h3>
+                <a href="{% url 'home' %}" style="color: var(--accent); text-decoration: none; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">+ Track New</a>
+            </div>
+            
+            <div class="stats-grid">
+                {% for game in saved_games %}
+                <div class="dashboard-stat-card">
+                    <a href="{% url 'delete_account' game.id %}" class="remove-btn">Remove</a>
+                    <span class="platform-badge">{{ game.platform|upper }}</span>
+                    <h2 style="margin: 0; font-size: 1.4rem;">{{ game.game_username }}</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-dim); margin: 5px 0 15px 0;">{{ game.time_played }}</p>
+                    <div style="font-size: 2rem; font-weight: 900; color: var(--accent); text-shadow: 0 0 15px var(--accent-glow);">{{ game.ai_score }}%</div>
+                    <p class="recent-label" style="font-size: 0.6rem; margin: 0;">Current AI Rating</p>
+                    
+                    <a href="{% url 'download_report' game.id %}" class="pdf-btn">Download PDF Report</a>
+                    <p style="font-size: 0.65rem; color: var(--text-dim); margin-top: 15px; text-align: center;">Last Sync: {{ game.date_saved|date:"d M Y" }}</p>
+                </div>
+                {% empty %}
+                <div class="hero-card" style="grid-column: 1 / -1; padding: 50px; text-align: center;">
+                    <p style="color: var(--text-dim); margin-bottom: 20px;">No accounts linked to your neural profile yet.</p>
+                    <a href="{% url 'home' %}" class="btn-primary" style="display: inline-block; width: auto; text-decoration: none; padding: 15px 40px;">Initiate Search</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div style="margin-bottom: 60px;">
+            <h3 style="color: var(--accent); letter-spacing: 2px; text-transform: uppercase; font-size: 0.8rem;">AI Teammate Recommendations</h3>
+            <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 25px;">Found via Cosine Similarity playstyle analysis</p>
+
+            <div class="matches-grid">
+                {% for match in matches %}
+                <div class="match-card">
+                    <div>
+                        <strong style="font-size: 1.1rem; display: block;">{{ match.username }}</strong>
+                        <span style="font-size: 0.75rem; color: var(--text-dim);">{{ match.game_name }} • {{ match.platform|title }}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="color: var(--accent); font-weight: 900; font-size: 1.4rem; text-shadow: 0 0 10px var(--accent-glow);">{{ match.score }}%</div>
+                        <span style="font-size: 0.6rem; text-transform: uppercase; font-weight: 800; color: var(--text-dim);">Match</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="background: rgba(255,255,255,0.02); border-radius: 15px; padding: 30px; text-align: center; grid-column: 1 / -1; border: 1px dashed rgba(255,255,255,0.1);">
+                    <p style="color: var(--text-dim); font-size: 0.9rem; font-style: italic;">Link more accounts to discover compatible teammates.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ chart_labels|safe }},
+                datasets: [{
+                    label: 'AI Rating (%)',
+                    data: {{ chart_data|safe }},
+                    borderColor: '#00ff88',
+                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#00ff88',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#888' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#888' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        function refreshDashboard() {
+            fetch(window.location.href)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newGrid = doc.querySelector('.stats-grid');
+                    const oldGrid = document.querySelector('.stats-grid');
+                    if (oldGrid && newGrid) {
+                        oldGrid.innerHTML = newGrid.innerHTML;
+                    }
+                })
+                .catch(err => console.warn('Update failed:', err));
+        }
+        setInterval(refreshDashboard, 30000);
+    </script>
+</body>
 </html>

@@ -1,0 +1,79 @@
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - GamerTracker</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
+    <style>
+        .edit-container {
+            max-width: 600px;
+            margin: 100px auto;
+            padding: 40px;
+            background: var(--glass);
+            border: 1px solid var(--glass-bright);
+            border-radius: 32px;
+            backdrop-filter: blur(20px);
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }
+        input[type="file"] {
+            color: white;
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 12px;
+            width: 100%;
+        }
+        textarea {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--glass-bright);
+            border-radius: 12px;
+            padding: 15px;
+            color: white;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{% url 'home' %}" class="logo">Gamer<span>Tracker</span></a>
+        </div>
+    </nav>
+
+    <div class="edit-container">
+        <h1 style="margin-bottom: 10px;">Edit Neural <span>Identity</span></h1>
+        <p style="color: var(--text-dim); margin-bottom: 30px;">Update your digital presence and combat biography.</p>
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label>Avatar / Profile Image</label>
+                {{ p_form.avatar }}
+            </div>
+
+            <div class="form-group">
+                <label>Combat Biography</label>
+                {{ p_form.bio }}
+            </div>
+
+            <button type="submit" class="btn-primary" style="width: 100%;">Save Identity</button>
+            <a href="{% url 'dashboard' %}" style="display: block; text-align: center; margin-top: 20px; color: var(--text-dim); text-decoration: none; font-size: 0.8rem;">Cancel</a>
+        </form>
+    </div>
+</body>
+</html>
