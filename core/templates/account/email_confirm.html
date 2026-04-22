@@ -1,0 +1,31 @@
+{% load static %}
+{% load account %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirm Email - GamerTracker</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{% url 'home' %}" class="logo">Gamer<span>Tracker</span></a>
+        </div>
+    </nav>
+
+    <div class="hero-section" style="text-align: center; margin-top: 100px;">
+        <h1>Verify <span>Identity</span></h1>
+        
+        {% if confirmation %}
+            <p style="margin-bottom: 30px;">Please confirm that <strong>{{ confirmation.email_address.email }}</strong> belongs to your neural link.</p>
+            <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+                {% csrf_token %}
+                <button type="submit" class="btn-primary">Confirm Verification</button>
+            </form>
+        {% else %}
+            <p style="color: #ff4444;">This confirmation link is invalid or has already expired.</p>
+            <a href="{% url 'login' %}" style="color: var(--accent);">Return to Login</a>
+        {% endif %}
+    </div>
+</body>
+</html>
