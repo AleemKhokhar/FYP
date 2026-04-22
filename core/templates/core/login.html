@@ -59,7 +59,11 @@
                 <input type="password" name="password" placeholder="Password" required style="margin-bottom: 25px;" />
                 <button type="submit" class="btn-primary" style="width: 100%;">Authorize Access</button>
             </form>
-
+            <div class="signup-link-wrapper" style="margin-top: 15px; border-top: none; padding-top: 0;">
+              <a href="{% url 'account_reset_password' %}" class="signup-link" style="font-size: 0.75rem;">
+                  Forgot your password? <span>Reset it</span>
+              </a>
+            </div>
             <div class="signup-link-wrapper">
                 <a href="{% url 'signup' %}" class="signup-link">
                     Don't have an account? <span>Sign up</span>
