@@ -21,10 +21,16 @@
     <div class="hero-section">
       <h1>Signup</h1>
       <p>Signup</p>
+      
+      {% if error %}
+        <p style="color: #ff4444; font-weight: bold; margin-bottom: 15px;">{{ error }}</p>
+      {% endif %}
+      
       <form method="POST" action="">
         {% csrf_token %}
-        <input type="text" name="username" placeholder="Enter Username" />
-        <input type="password" name="password" placeholder="Enter Password" />
+        <input type="text" name="username" placeholder="Enter Username" required />
+        <input type="email" name="email" placeholder="Enter Email" required />
+        <input type="password" name="password" placeholder="Enter Password" required />
         <button type="submit">Sign Up</button>
       </form>
     </div>

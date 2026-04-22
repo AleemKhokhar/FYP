@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.core.cache import cache
 from django.template.loader import get_template
 from django.conf import settings
+from allauth.account.models import EmailAddress
 
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -24,6 +25,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 from .models import SavedGame, Profile
 from .forms import ProfileUpdateForm
 from .ai_model import predict_performance
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login
+from allauth.account.models import EmailAddress
+
+
 
 def broadcast_stats(username, data):
     channel_layer = get_channel_layer()
@@ -363,20 +369,43 @@ def clear_history(request):
     return redirect('home')
 
 def login_view(request):
+    error = None
     if request.method == "POST":
-        u, p = request.POST.get('username'), request.POST.get('password')
-        user = authenticate(username=u, password=p)
-        if user:
-            login(request, user)
-            return redirect('dashboard')
-    return render(request, 'core/login.html')
+        u = request.POST.get('username')
+        p = request.POST.get('password')
+        user = authenticate(request, username=u, password=p)
+        
+        if user is not None:
+            if EmailAddress.objects.filter(user=user, verified=True).exists():
+                login(request, user)
+                return redirect('dashboard')
+            else:
+                error = "You must verify your email before logging in."
+        else:
+            error = "Invalid username or password."
+            
+    return render(request, 'core/login.html', {'error': error})
 
 def signup_view(request):
+    error = None
     if request.method == "POST":
-        u, p = request.POST.get('username'), request.POST.get('password')
-        User.objects.create_user(username=u, password=p)
-        return redirect('login')
-    return render(request, 'core/signup.html')
+        u = request.POST.get('username')
+        e = request.POST.get('email')
+        p = request.POST.get('password')
+        
+        if User.objects.filter(username=u).exists():
+            error = "Username is already taken. Please choose another."
+        elif User.objects.filter(email=e).exists():
+            error = "Email is already registered."
+        else:
+            user = User.objects.create_user(username=u, email=e, password=p)
+            
+            email_address = EmailAddress.objects.create(user=user, email=e, primary=True, verified=False)
+            email_address.send_confirmation(request)
+            
+            return redirect('login')
+            
+    return render(request, 'core/signup.html', {'error': error})
 
 def logout_view(request):
     logout(request)
