@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -7,8 +7,9 @@ from django.utils import timezone
 from django.core.cache import cache
 from django.template.loader import get_template
 from django.conf import settings
-from allauth.account.models import EmailAddress
+from django.contrib import messages
 
+from allauth.account.models import EmailAddress
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
@@ -17,87 +18,15 @@ import requests
 import math
 import re
 import numpy as np
+import json
 from datetime import datetime
 from io import BytesIO
 from xhtml2pdf import pisa
 from sklearn.metrics.pairwise import cosine_similarity
 
 from .models import SavedGame, Profile
-from .forms import ProfileUpdateForm
+from .forms import ProfileUpdateForm, AccountUpdateForm
 from .ai_model import predict_performance
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
-from allauth.account.models import EmailAddress
-import json
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-from .models import SavedGame
-from django.contrib.auth import logout
-from django.contrib import messages
-from django.shortcuts import redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .forms import AccountUpdateForm
-
-@login_required
-def account_settings(request):
-    if request.method == 'POST':
-        form = AccountUpdateForm(request.POST, instance=request.user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Your account details have been updated successfully.")
-            return redirect('dashboard')
-    else:
-        form = AccountUpdateForm(instance=request.user)
-        
-    return render(request, 'core/account_settings.html', {'form': form})
-
-@login_required
-def delete_user_profile(request):
-    if request.method == 'POST':
-        user_to_delete = request.user
-        logout(request)
-        user_to_delete.delete()
-        messages.success(request, "Your account and all associated telemetry data have been permanently erased.")
-        return redirect('home')
-    
-    return redirect('dashboard')
-
-@login_required
-def export_user_data(request):
-    user_games = SavedGame.objects.filter(user=request.user)
-    
-    export_data = {
-        "account_info": {
-            "username": request.user.username,
-            "email": request.user.email,
-            "date_joined": request.user.date_joined.isoformat()
-        },
-        "telemetry_data": []
-    }
-    
-    for game in user_games:
-        export_data["telemetry_data"].append({
-            "platform": game.platform,
-            "game_username": game.game_username,
-            "time_played": game.time_played,
-            "ai_score": game.ai_score,
-            "raw_metrics": {
-                "m1": game.m1,
-                "m2": game.m2,
-                "m3": game.m3
-            },
-            "date_saved": game.date_saved.isoformat() if game.date_saved else None
-        })
-        
-    response = JsonResponse(export_data, json_dumps_params={'indent': 4})
-    response['Content-Disposition'] = f'attachment; filename="{request.user.username}_gamertracker_export.json"'
-    
-    return response
-
-
 
 def broadcast_stats(username, data):
     channel_layer = get_channel_layer()
@@ -139,6 +68,8 @@ def fetch_fortnite_stats(username, platform):
 
 def fetch_clash_stats(username):
     api_key = os.getenv("CLASH_API_KEY")
+    if not api_key:
+        return None, "Clash API Key missing."
     clean_tag = username.replace("#", "").upper()
     url = f"https://api.clashofclans.com/v1/players/%23{clean_tag}"
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -205,37 +136,88 @@ def fetch_steam_stats(username):
 
 def fetch_hypixel_stats(username):
     api_key = os.getenv("HYPIXEL_API_KEY")
+    if not api_key:
+        return None, "Hypixel API Key missing."
     url_uuid = f"https://api.mojang.com/users/profiles/minecraft/{username}"
     try:
         r_uuid = requests.get(url_uuid, timeout=10)
         if r_uuid.status_code != 200:
             return None, "Minecraft Account Not Found"
         uuid = r_uuid.json().get("id")
-        url_stats = f"https://api.hypixel.net/v2/player?key={api_key}&uuid={uuid}"
-        r_stats = requests.get(url_stats, timeout=10)
+        url_stats = f"https://api.hypixel.net/v2/player?uuid={uuid}"
+        headers = {"API-Key": api_key}
+        r_stats = requests.get(url_stats, headers=headers, timeout=10)
         data = r_stats.json()
         player = data.get("player")
         if not player:
             return None, "Player has no Hypixel data."
-        exp = player.get("networkExp", 0)
+        exp = player.get("networkExp") or 0
         lvl = (math.sqrt(2 * exp + 15312.5) - 125) / 50
-        login_ms = player.get("firstLogin", 0)
+        login_ms = player.get("firstLogin") or 0
         login_date = datetime.fromtimestamp(login_ms / 1000.0).strftime('%d %b %Y') if login_ms else "Unknown"
+        karma = player.get("karma") or 0
+        achievement_points = player.get("achievementPoints") or 0
         return {
             "main_stat": f"Network Level {max(1, math.floor(lvl))}",
             "detail_label": "Karma",
-            "detail_value": f"{player.get('karma', 0):,}",
+            "detail_value": f"{karma:,}",
             "m1": float(lvl),
-            "m2": float(player.get('karma', 0)) / 1000,
-            "m3": float(player.get("achievementPoints", 0)),
+            "m2": float(karma) / 1000,
+            "m3": float(achievement_points),
             "raw_stats": [
-                {"key": "Achievement Points", "value": player.get("achievementPoints", 0)},
+                {"key": "Achievement Points", "value": achievement_points},
                 {"key": "First Joined", "value": login_date},
                 {"key": "Recent Game", "value": player.get("mostRecentGameType", "None")}
             ]
         }, None
     except Exception as e:
         return None, str(e)
+
+@login_required
+def account_settings(request):
+    if request.method == 'POST':
+        form = AccountUpdateForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your account details have been updated successfully.")
+            return redirect('dashboard')
+    else:
+        form = AccountUpdateForm(instance=request.user)
+    return render(request, 'core/account_settings.html', {'form': form})
+
+@login_required
+def delete_user_profile(request):
+    if request.method == 'POST':
+        user_to_delete = request.user
+        logout(request)
+        user_to_delete.delete()
+        messages.success(request, "Account erased.")
+        return redirect('home')
+    return redirect('dashboard')
+
+@login_required
+def export_user_data(request):
+    user_games = SavedGame.objects.filter(user=request.user)
+    export_data = {
+        "account_info": {
+            "username": request.user.username,
+            "email": request.user.email,
+            "date_joined": request.user.date_joined.isoformat()
+        },
+        "telemetry_data": []
+    }
+    for game in user_games:
+        export_data["telemetry_data"].append({
+            "platform": game.platform,
+            "game_username": game.game_username,
+            "time_played": game.time_played,
+            "ai_score": game.ai_score,
+            "raw_metrics": {"m1": game.m1, "m2": game.m2, "m3": game.m3},
+            "date_saved": game.date_saved.isoformat() if game.date_saved else None
+        })
+    response = JsonResponse(export_data, json_dumps_params={'indent': 4})
+    response['Content-Disposition'] = f'attachment; filename="{request.user.username}_export.json"'
+    return response
 
 def home(request):
     history = request.session.get('recent_searches', [])
@@ -245,129 +227,70 @@ def game_search(request):
     game_choice = request.GET.get("game_choice")
     username = (request.GET.get("username") or "").strip()
     platform = (request.GET.get("platform") or "").strip()
-    
     if not username or not game_choice:
-        return HttpResponseBadRequest("Missing required fields")
-    
+        return HttpResponseBadRequest("Missing fields")
     recent_searches = request.session.get('recent_searches', [])
     if username and username not in recent_searches:
         recent_searches.insert(0, username)
         request.session['recent_searches'] = recent_searches[:5]
-    
     cache_key = f"stats_{game_choice}_{username}_{platform}"
     stats_data = cache.get(cache_key)
     error = None
-
     if not stats_data:
-        if game_choice == "fortnite":
-            stats_data, error = fetch_fortnite_stats(username, platform)
-        elif game_choice == "clash":
-            stats_data, error = fetch_clash_stats(username)
-        elif game_choice == "steam":
-            stats_data, error = fetch_steam_stats(username)
-        elif game_choice == "hypixel":
-            stats_data, error = fetch_hypixel_stats(username)
-        else:
-            error = "Game not supported yet."
-        
+        if game_choice == "fortnite": stats_data, error = fetch_fortnite_stats(username, platform)
+        elif game_choice == "clash": stats_data, error = fetch_clash_stats(username)
+        elif game_choice == "steam": stats_data, error = fetch_steam_stats(username)
+        elif game_choice == "hypixel": stats_data, error = fetch_hypixel_stats(username)
         if stats_data and not error:
             cache.set(cache_key, stats_data, 300)
-
     is_linked = False
     if stats_data and not error:
-        prediction = predict_performance(
-            stats_data.get('m1', 0),
-            stats_data.get('m2', 0),
-            stats_data.get('m3', 0)
-        )
+        prediction = predict_performance(stats_data.get('m1', 0), stats_data.get('m2', 0), stats_data.get('m3', 0))
         stats_data['ai_score'] = prediction
-
         if request.user.is_authenticated:
-            is_linked = SavedGame.objects.filter(
-                user=request.user, 
-                game_username=username, 
-                platform=game_choice
-            ).exists()
-
-        insights = []
-        m1_val = float(stats_data.get('m1', 0))
-        if game_choice == 'fortnite':
-            if m1_val > 2.5: insights.append("Combat: K/D ratio suggests high mechanical skill.")
-            else: insights.append("Combat: Improve positioning to increase K/D.")
-        elif game_choice == 'clash':
-            if m1_val >= 12: insights.append("Progression: High Town Hall level detected.")
-        
-        stats_data['insights'] = insights
-
+            is_linked = SavedGame.objects.filter(user=request.user, game_username=username, platform=game_choice).exists()
         if 'raw_stats' in stats_data:
             live_data = {s['key']: s['value'] for s in stats_data['raw_stats']}
             live_data['ai_score'] = prediction
             broadcast_stats(username, live_data)
-
     return render(request, "core/results.html", {
-        "username": username,
-        "game_choice": game_choice,
-        "platform": platform,
-        "stats": stats_data,
-        "error": error,
-        "is_linked": is_linked
+        "username": username, "game_choice": game_choice, "platform": platform,
+        "stats": stats_data, "error": error, "is_linked": is_linked
     })
 
 @login_required
 def link_account(request):
     if request.method == "POST":
-        game_u = request.POST.get('game_username')
-        game_c = request.POST.get('game_choice')
-        stat = request.POST.get('main_stat')
-        m1 = request.POST.get('m1', 0)
-        m2 = request.POST.get('m2', 0)
-        m3 = request.POST.get('m3', 0)
-        ai_s = request.POST.get('ai_score', 0)
-        
+        game_u, game_c = request.POST.get('game_username'), request.POST.get('game_choice')
+        stat, ai_s = request.POST.get('main_stat'), request.POST.get('ai_score', 0)
+        m1, m2, m3 = request.POST.get('m1', 0), request.POST.get('m2', 0), request.POST.get('m3', 0)
         SavedGame.objects.update_or_create(
-            user=request.user,
-            game_username=game_u,
-            platform=game_c,
-            defaults={
-                'time_played': stat,
-                'm1': m1,
-                'm2': m2,
-                'm3': m3,
-                'ai_score': float(ai_s or 0)
-            }
+            user=request.user, game_username=game_u, platform=game_c,
+            defaults={'time_played': stat, 'm1': m1, 'm2': m2, 'm3': m3, 'ai_score': float(ai_s or 0)}
         )
-        return redirect('dashboard')
+    return redirect('dashboard')
 
 @login_required
 def dashboard(request):
     user_games = SavedGame.objects.filter(user=request.user).order_by('date_saved')
     all_other_games = SavedGame.objects.exclude(user=request.user)
-    
     chart_labels = [s.date_saved.strftime("%d %b") for s in user_games]
     chart_data = [s.ai_score for s in user_games]
-    
     recommendations = []
     if user_games.exists():
         my_game = user_games.last()
         my_vec = np.array([float(my_game.m1 or 0), float(my_game.m2 or 0), (float(my_game.m3 or 0) / 100)]).reshape(1, -1)
-        
         for other in all_other_games:
             other_vec = np.array([float(other.m1 or 0), float(other.m2 or 0), (float(other.m3 or 0) / 100)]).reshape(1, -1)
             sim = cosine_similarity(my_vec, other_vec)[0][0]
             recommendations.append({
-                'username': other.user.username,
-                'game_name': other.game_username,
-                'score': round(sim * 100, 1),
-                'platform': other.platform
+                'username': other.user.username, 'game_name': other.game_username,
+                'score': round(sim * 100, 1), 'platform': other.platform
             })
-    
     recommendations = sorted(recommendations, key=lambda x: x['score'], reverse=True)[:5]
-    
     return render(request, 'core/dashboard.html', {
-        'saved_games': user_games, 
-        'matches': recommendations,
-        'chart_labels': chart_labels,
-        'chart_data': chart_data
+        'saved_games': user_games, 'matches': recommendations,
+        'chart_labels': chart_labels, 'chart_data': chart_data
     })
 
 def leaderboard(request):
@@ -378,8 +301,7 @@ def leaderboard(request):
 def download_report(request, stat_id):
     stat = get_object_or_404(SavedGame, id=stat_id, user=request.user)
     template = get_template('core/pdf_template.html')
-    context = {'stat': stat}
-    html = template.render(context)
+    html = template.render({'stat': stat})
     result = BytesIO()
     pisa.pisaDocument(BytesIO(html.encode("UTF-8")), result)
     response = HttpResponse(result.getvalue(), content_type='application/pdf')
@@ -406,30 +328,23 @@ def profile_edit(request):
 
 def player_compare(request):
     u1, u2 = request.GET.get('user1', '').strip(), request.GET.get('user2', '').strip()
-    game = request.GET.get('game_choice')
-    platform = request.GET.get('platform', 'epic')
+    game, platform = request.GET.get('game_choice'), request.GET.get('platform', 'epic')
     d1, d2, error = None, None, None
-
     if u1 and u2 and game:
         if game == "fortnite":
             d1, _ = fetch_fortnite_stats(u1, platform)
             d2, _ = fetch_fortnite_stats(u2, platform)
         elif game == "clash":
-            d1, _ = fetch_clash_stats(u1)
-            d2, _ = fetch_clash_stats(u2)
+            d1, _ = fetch_clash_stats(u1); d2, _ = fetch_clash_stats(u2)
         elif game == "steam":
-            d1, _ = fetch_steam_stats(u1)
-            d2, _ = fetch_steam_stats(u2)
+            d1, _ = fetch_steam_stats(u1); d2, _ = fetch_steam_stats(u2)
         elif game == "hypixel":
-            d1, _ = fetch_hypixel_stats(u1)
-            d2, _ = fetch_hypixel_stats(u2)
-
+            d1, _ = fetch_hypixel_stats(u1); d2, _ = fetch_hypixel_stats(u2)
         if d1 and d2:
             d1['ai_score'] = predict_performance(d1['m1'], d1['m2'], d1['m3'])
             d2['ai_score'] = predict_performance(d2['m1'], d2['m2'], d2['m3'])
         else:
-            error = "One or both players could not be found."
-
+            error = "Players not found."
     return render(request, 'core/comparison.html', {'user1': u1, 'user2': u2, 'data1': d1, 'data2': d2, 'game_choice': game, 'error': error})
 
 def clear_history(request):
@@ -439,40 +354,26 @@ def clear_history(request):
 def login_view(request):
     error = None
     if request.method == "POST":
-        u = request.POST.get('username')
-        p = request.POST.get('password')
+        u, p = request.POST.get('username'), request.POST.get('password')
         user = authenticate(request, username=u, password=p)
-        
-        if user is not None:
+        if user:
             if EmailAddress.objects.filter(user=user, verified=True).exists():
-                login(request, user)
-                return redirect('dashboard')
-            else:
-                error = "You must verify your email before logging in."
-        else:
-            error = "Invalid username or password."
-            
+                login(request, user); return redirect('dashboard')
+            else: error = "Verify email first."
+        else: error = "Invalid login."
     return render(request, 'core/login.html', {'error': error})
 
 def signup_view(request):
     error = None
     if request.method == "POST":
-        u = request.POST.get('username')
-        e = request.POST.get('email')
-        p = request.POST.get('password')
-        
-        if User.objects.filter(username=u).exists():
-            error = "Username is already taken. Please choose another."
-        elif User.objects.filter(email=e).exists():
-            error = "Email is already registered."
+        u, e, p = request.POST.get('username'), request.POST.get('email'), request.POST.get('password')
+        if User.objects.filter(username=u).exists(): error = "Username taken."
+        elif User.objects.filter(email=e).exists(): error = "Email registered."
         else:
             user = User.objects.create_user(username=u, email=e, password=p)
-            
             email_address = EmailAddress.objects.create(user=user, email=e, primary=True, verified=False)
             email_address.send_confirmation(request)
-            
             return redirect('login')
-            
     return render(request, 'core/signup.html', {'error': error})
 
 def logout_view(request):
