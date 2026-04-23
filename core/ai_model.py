@@ -31,7 +31,9 @@ def predict_performance(m1, m2, m3):
         norm_m2 = min(float(m2) / 10.0, 1.0)
         norm_m3 = min(float(m3) / 500.0, 1.0)
         
-        weighted_score = (norm_m1 * 50) + (norm_m2 * 30) + (norm_m3 * 20)
+        with torch.no_grad():
+            input_tensor = torch.tensor([[norm_m1, norm_m2, norm_m3]], dtype=torch.float32)
+            weighted_score = float(model(input_tensor).item()) * 100
         
         return round(max(weighted_score, 0.5), 1)
     except:
