@@ -37,7 +37,6 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',   
     'django.contrib.sessions.middleware.SessionMiddleware',
-    ... (rest unchanged)
     ]
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
