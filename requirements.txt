@@ -2,7 +2,7 @@ Django==5.2
 daphne==4.1.2
 channels==4.1.0
 channels-redis==4.2.0
-django-allauth==65.0.2
+django-allauth==0.57.0
 argon2-cffi==25.1.0
 gunicorn==23.0.0
 whitenoise==6.7.0
