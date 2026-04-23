@@ -227,32 +227,96 @@ def game_search(request):
     game_choice = request.GET.get("game_choice")
     username = (request.GET.get("username") or "").strip()
     platform = (request.GET.get("platform") or "").strip()
+    
     if not username or not game_choice:
         return HttpResponseBadRequest("Missing fields")
+        
     recent_searches = request.session.get('recent_searches', [])
     if username and username not in recent_searches:
         recent_searches.insert(0, username)
         request.session['recent_searches'] = recent_searches[:5]
+        
     cache_key = f"stats_{game_choice}_{username}_{platform}"
     stats_data = cache.get(cache_key)
     error = None
+    
     if not stats_data:
-        if game_choice == "fortnite": stats_data, error = fetch_fortnite_stats(username, platform)
-        elif game_choice == "clash": stats_data, error = fetch_clash_stats(username)
-        elif game_choice == "steam": stats_data, error = fetch_steam_stats(username)
-        elif game_choice == "hypixel": stats_data, error = fetch_hypixel_stats(username)
+        if game_choice == "fortnite": 
+            stats_data, error = fetch_fortnite_stats(username, platform)
+        elif game_choice == "clash": 
+            stats_data, error = fetch_clash_stats(username)
+        elif game_choice == "steam": 
+            stats_data, error = fetch_steam_stats(username)
+        elif game_choice == "hypixel": 
+            stats_data, error = fetch_hypixel_stats(username)
+            
         if stats_data and not error:
             cache.set(cache_key, stats_data, 300)
+            
     is_linked = False
+    
     if stats_data and not error:
-        prediction = predict_performance(stats_data.get('m1', 0), stats_data.get('m2', 0), stats_data.get('m3', 0))
+        m1_val = float(stats_data.get('m1', 0))
+        m2_val = float(stats_data.get('m2', 0))
+        m3_val = float(stats_data.get('m3', 0))
+        
+        norm_m1, norm_m2, norm_m3 = 0, 0, 0
+        insights = []
+
+        if game_choice == 'fortnite':
+            norm_m1 = min(m1_val / 5.0, 1.0) * 10
+            norm_m2 = min(m2_val / 20.0, 1.0) * 10
+            norm_m3 = min(m3_val / 1000.0, 1.0) * 10
+            if m1_val > 2.0: 
+                insights.append("Combat: K/D ratio suggests high mechanical skill.")
+            else: 
+                insights.append("Combat: Focus on positioning and survival to increase K/D.")
+            if m2_val > 10.0: 
+                insights.append("Strategy: Excellent win rate. Strong late-game execution.")
+
+        elif game_choice == 'clash':
+            norm_m1 = min(m1_val / 16.0, 1.0) * 10
+            norm_m2 = min(m2_val / 5000.0, 1.0) * 10
+            norm_m3 = min(m3_val / 2000.0, 1.0) * 10
+            if m1_val >= 11: 
+                insights.append("Progression: High Town Hall level. Prioritize hero upgrades.")
+            else: 
+                insights.append("Progression: Focus on maxing resource collectors before upgrading Town Hall.")
+            if m3_val > 500: 
+                insights.append("Clan Wars: Veteran war attacker with high star count.")
+
+        elif game_choice == 'steam':
+            norm_m1 = min(m1_val / 100.0, 1.0) * 10
+            norm_m2 = min(m2_val / 4.0, 1.0) * 10
+            norm_m3 = min(m3_val / 2000.0, 1.0) * 10
+            if m1_val > 50: 
+                insights.append("Engagement: High Steam level. Active community participant.")
+            else: 
+                insights.append("Engagement: Craft badges during seasonal sales to efficiently level up.")
+
+        elif game_choice == 'hypixel':
+            norm_m1 = min(m1_val / 250.0, 1.0) * 10
+            norm_m2 = min(m2_val / 5000.0, 1.0) * 10
+            norm_m3 = min(m3_val / 15000.0, 1.0) * 10
+            if m1_val > 100: 
+                insights.append("Dedication: Veteran Hypixel player with high Network Level.")
+            else: 
+                insights.append("Progression: Complete daily challenges across minigames to boost Network Level.")
+            if m2_val > 1000: 
+                insights.append("Community: High Karma indicates positive player interactions.")
+
+        prediction = predict_performance(norm_m1, norm_m2, norm_m3)
         stats_data['ai_score'] = prediction
+        stats_data['insights'] = insights
+
         if request.user.is_authenticated:
             is_linked = SavedGame.objects.filter(user=request.user, game_username=username, platform=game_choice).exists()
+            
         if 'raw_stats' in stats_data:
             live_data = {s['key']: s['value'] for s in stats_data['raw_stats']}
             live_data['ai_score'] = prediction
             broadcast_stats(username, live_data)
+            
     return render(request, "core/results.html", {
         "username": username, "game_choice": game_choice, "platform": platform,
         "stats": stats_data, "error": error, "is_linked": is_linked
