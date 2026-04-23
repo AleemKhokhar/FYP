@@ -71,7 +71,7 @@ def fetch_clash_stats(username):
     if not api_key:
         return None, "Clash API Key missing."
     clean_tag = username.replace("#", "").upper()
-    url = f"https://api.clashofclans.com/v1/players/%23{clean_tag}"
+    url = f"https://cocproxy.royaleapi.dev/v1/players/%23{clean_tag}"
     headers = {"Authorization": f"Bearer {api_key}"}
     try:
         r = requests.get(url, headers=headers, timeout=10)
