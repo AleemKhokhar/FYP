@@ -365,11 +365,17 @@ def leaderboard(request):
 def download_report(request, stat_id):
     stat = get_object_or_404(SavedGame, id=stat_id, user=request.user)
     template = get_template('core/pdf_template.html')
-    html = template.render({'stat': stat})
+    html = template.render({'stat': stat, 'user': request.user})
+    
     result = BytesIO()
-    pisa.pisaDocument(BytesIO(html.encode("UTF-8")), result)
+    pdf = pisa.CreatePDF(BytesIO(html.encode("UTF-8")), dest=result)
+    
+    if pdf.err:
+        return HttpResponseBadRequest("Error generating PDF")
+        
     response = HttpResponse(result.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{stat.game_username}_report.pdf"'
+    
     return response
 
 @login_required
