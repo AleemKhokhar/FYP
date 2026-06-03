@@ -36,21 +36,17 @@ class Command(BaseCommand):
                     continue
                 
                 profile = next((p for p in profile_resp["profiles"] if p.get("selected")), profile_resp["profiles"][0])
-                member_data = profile.get("members", {}).get(player.uuid, {})
                 
-                last_save_ms = member_data.get("last_save", 0)
-                last_save_date = datetime.datetime.fromtimestamp(last_save_ms / 1000.0, tz=datetime.timezone.utc)
                 
-                if last_save_date < fourteen_days_ago:
-                    player.is_active = False
-                    player.save()
-                    self.stdout.write(f"Deactivated {player.username}")
+                clean_uuid = player.uuid.replace('-', '')
+                member_data = profile.get("members", {}).get(clean_uuid, {})
+                
+                if not member_data:
+                    self.stdout.write(f"Could not find member data for {player.username}, skipping...")
                     continue
                 
-                cata_xp = member_data.get("dungeons", {}).get("dungeon_types", {}).get("catacombs", {}).get("experience", 0)
-                skyblock_xp = member_data.get("leveling", {}).get("experience", 0)
-                purse = member_data.get("coin_purse", 0)
                 
+                last_login_ms = 0
                 combat_xp = 0
                 mining_xp = 0
                 farming_xp = 0
@@ -59,13 +55,27 @@ class Command(BaseCommand):
                 
                 if player_resp.get("success") and player_resp.get("player"):
                     player_data = player_resp["player"]
-                    skills = player_data.get("player_data", {}).get("experience", {})
+                    last_login_ms = player_data.get("lastLogin", 0)
                     
+                    skills = player_data.get("player_data", {}).get("experience", {})
                     combat_xp = skills.get("SKILL_COMBAT", 0)
                     mining_xp = skills.get("SKILL_MINING", 0)
                     farming_xp = skills.get("SKILL_FARMING", 0)
                     foraging_xp = skills.get("SKILL_FORAGING", 0)
                     fishing_xp = skills.get("SKILL_FISHING", 0)
+                
+                
+                if last_login_ms > 0:
+                    last_login_date = datetime.datetime.fromtimestamp(last_login_ms / 1000.0, tz=datetime.timezone.utc)
+                    if last_login_date < fourteen_days_ago:
+                        player.is_active = False
+                        player.save()
+                        self.stdout.write(f"Deactivated {player.username} (Inactive since {last_login_date.date()})")
+                        continue
+                
+                cata_xp = member_data.get("dungeons", {}).get("dungeon_types", {}).get("catacombs", {}).get("experience", 0)
+                skyblock_xp = member_data.get("leveling", {}).get("experience", 0)
+                purse = member_data.get("coin_purse", 0)
                 
                 DailyStatSnapshot.objects.create(
                     player=player,
