@@ -10,6 +10,7 @@ class Profile(models.Model):
     def __str__(self):
         return f'{self.user.username} Profile'
 
+
 class SavedGame(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     game_username = models.CharField(max_length=100)
@@ -26,3 +27,21 @@ class SavedGame(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.game_username} ({self.platform})"
+
+
+class TrackedPlayer(models.Model):
+    uuid = models.CharField(max_length=100, unique=True)
+    username = models.CharField(max_length=100)
+    profile_id = models.CharField(max_length=100, default='pending')
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.username
+
+
+class DailyStatSnapshot(models.Model):
+    player = models.ForeignKey(TrackedPlayer, on_delete=models.CASCADE)
+    date = models.DateField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.player.username} - {self.date}"
