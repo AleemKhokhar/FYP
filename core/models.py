@@ -43,5 +43,16 @@ class DailyStatSnapshot(models.Model):
     player = models.ForeignKey(TrackedPlayer, on_delete=models.CASCADE)
     date = models.DateField(auto_now_add=True)
     
+    catacombs_xp = models.FloatField(default=0.0)
+    combat_xp = models.FloatField(default=0.0)
+    mining_xp = models.FloatField(default=0.0)
+    farming_xp = models.FloatField(default=0.0)
+    foraging_xp = models.FloatField(default=0.0)
+    fishing_xp = models.FloatField(default=0.0)
+    skyblock_xp = models.FloatField(default=0.0)
+    
+    bank_balance = models.FloatField(default=0.0)
+    purse_balance = models.FloatField(default=0.0)
+
     def __str__(self):
         return f"{self.player.username} - {self.date}"
