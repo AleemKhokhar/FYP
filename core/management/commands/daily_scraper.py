@@ -1,6 +1,7 @@
 import requests
 import time
 import os
+import datetime
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
@@ -38,12 +39,12 @@ class Command(BaseCommand):
                 member_data = profile.get("members", {}).get(player.uuid, {})
                 
                 last_save_ms = member_data.get("last_save", 0)
-                last_save_date = timezone.datetime.fromtimestamp(last_save_ms / 1000.0, tz=timezone.utc)
+                last_save_date = datetime.datetime.fromtimestamp(last_save_ms / 1000.0, tz=datetime.timezone.utc)
                 
                 if last_save_date < fourteen_days_ago:
                     player.is_active = False
                     player.save()
-                    self.stdout.write(f"Deactivated {player.username} (Inactive since {last_save_date.date()})")
+                    self.stdout.write(f"Deactivated {player.username}")
                     continue
                 
                 cata_xp = member_data.get("dungeons", {}).get("dungeon_types", {}).get("catacombs", {}).get("experience", 0)
