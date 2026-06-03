@@ -12,3 +12,11 @@ class SavedGameAdmin(admin.ModelAdmin):
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ('user',)
+    
+from django.db import models
+
+class APILog(models.Model):
+    endpoint = models.CharField(max_length=255)
+    status_code = models.IntegerField()
+    response_time = models.FloatField()
+    timestamp = models.DateTimeField(auto_now_add=True)
