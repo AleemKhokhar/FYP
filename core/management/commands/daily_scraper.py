@@ -27,15 +27,23 @@ class Command(BaseCommand):
             
             try:
                 profile_resp = requests.get(profile_url).json()
-                time.sleep(0.5) 
-                
-                player_resp = requests.get(player_url).json()
-                time.sleep(0.5)
-                
+                time.sleep(1.5) 
                 
                 if not profile_resp.get("success"):
-                    self.stdout.write(f"API Rejection for {player.username}: {profile_resp.get('cause', 'Unknown')}")
+                    cause = profile_resp.get('cause', 'Unknown')
+                    self.stdout.write(f"API Rejection for {player.username}: {cause}")
+                    
+                    if "daily" in cause.lower():
+                        self.stdout.write("Daily limit reached. Stopping scrape for today.")
+                        return
+                        
+                    if "throttle" in cause.lower():
+                        self.stdout.write("Sleeping for 60 seconds to reset rate limit...")
+                        time.sleep(60)
                     continue
+                
+                player_resp = requests.get(player_url).json()
+                time.sleep(1.5)
                 
                 if not profile_resp.get("profiles"):
                     self.stdout.write(f"No Skyblock profiles found for {player.username}, skipping...")
