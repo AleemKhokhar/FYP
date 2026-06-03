@@ -32,11 +32,16 @@ class Command(BaseCommand):
                 player_resp = requests.get(player_url).json()
                 time.sleep(0.5)
                 
-                if not profile_resp.get("success") or not profile_resp.get("profiles"):
+                
+                if not profile_resp.get("success"):
+                    self.stdout.write(f"API Rejection for {player.username}: {profile_resp.get('cause', 'Unknown')}")
+                    continue
+                
+                if not profile_resp.get("profiles"):
+                    self.stdout.write(f"No Skyblock profiles found for {player.username}, skipping...")
                     continue
                 
                 profile = next((p for p in profile_resp["profiles"] if p.get("selected")), profile_resp["profiles"][0])
-                
                 
                 clean_uuid = player.uuid.replace('-', '')
                 member_data = profile.get("members", {}).get(clean_uuid, {})
@@ -44,7 +49,6 @@ class Command(BaseCommand):
                 if not member_data:
                     self.stdout.write(f"Could not find member data for {player.username}, skipping...")
                     continue
-                
                 
                 last_login_ms = 0
                 combat_xp = 0
@@ -63,7 +67,6 @@ class Command(BaseCommand):
                     farming_xp = skills.get("SKILL_FARMING", 0)
                     foraging_xp = skills.get("SKILL_FORAGING", 0)
                     fishing_xp = skills.get("SKILL_FISHING", 0)
-                
                 
                 if last_login_ms > 0:
                     last_login_date = datetime.datetime.fromtimestamp(last_login_ms / 1000.0, tz=datetime.timezone.utc)
