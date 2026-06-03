@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SavedGame, Profile
+from .models import SavedGame, Profile, APILog
 
 @admin.register(SavedGame)
 class SavedGameAdmin(admin.ModelAdmin):
@@ -12,11 +12,8 @@ class SavedGameAdmin(admin.ModelAdmin):
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ('user',)
-    
-from django.db import models
 
-class APILog(models.Model):
-    endpoint = models.CharField(max_length=255)
-    status_code = models.IntegerField()
-    response_time = models.FloatField()
-    timestamp = models.DateTimeField(auto_now_add=True)
+@admin.register(APILog)
+class APILogAdmin(admin.ModelAdmin):
+    list_display = ('endpoint', 'status_code', 'response_time', 'timestamp')
+    list_filter = ('status_code', 'endpoint')

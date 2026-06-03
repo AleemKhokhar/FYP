@@ -27,6 +27,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from .models import SavedGame, Profile
 from .forms import ProfileUpdateForm, AccountUpdateForm
 from .ai_model import predict_performance
+from .models import APILog
+import time
 
 def broadcast_stats(username, data):
     channel_layer = get_channel_layer()
@@ -241,16 +243,53 @@ def game_search(request):
     error = None
     
     if not stats_data:
+
+        start_time = time.time()
+
+        status_code = 200
+
+        
+
         if game_choice == "fortnite": 
+
             stats_data, error = fetch_fortnite_stats(username, platform)
+
         elif game_choice == "clash": 
+
             stats_data, error = fetch_clash_stats(username)
+
         elif game_choice == "steam": 
+
             stats_data, error = fetch_steam_stats(username)
+
         elif game_choice == "hypixel": 
+
             stats_data, error = fetch_hypixel_stats(username)
+
             
+
+        elapsed_time = time.time() - start_time
+
+        if error:
+
+            status_code = 400
+
+
+
+        APILog.objects.create(
+
+            endpoint=f"Search Engine: {game_choice}",
+
+            status_code=status_code,
+
+            response_time=round(elapsed_time, 2)
+
+        )
+
+            
+
         if stats_data and not error:
+
             cache.set(cache_key, stats_data, 300)
             
     is_linked = False

@@ -28,6 +28,13 @@ class SavedGame(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.game_username} ({self.platform})"
 
+from django.db import models
+
+class APILog(models.Model):
+    endpoint = models.CharField(max_length=255)
+    status_code = models.IntegerField()
+    response_time = models.FloatField()
+    timestamp = models.DateTimeField(auto_now_add=True)
 
 class TrackedPlayer(models.Model):
     uuid = models.CharField(max_length=100, unique=True)
