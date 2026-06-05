@@ -1,6 +1,6 @@
+import os
 import requests
 import time
-import os
 import datetime
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -59,22 +59,8 @@ class Command(BaseCommand):
                     continue
                 
                 last_login_ms = 0
-                combat_xp = 0
-                mining_xp = 0
-                farming_xp = 0
-                foraging_xp = 0
-                fishing_xp = 0
-                
                 if player_resp.get("success") and player_resp.get("player"):
-                    player_data = player_resp["player"]
-                    last_login_ms = player_data.get("lastLogin", 0)
-                    
-                    skills = player_data.get("player_data", {}).get("experience", {})
-                    combat_xp = skills.get("SKILL_COMBAT", 0)
-                    mining_xp = skills.get("SKILL_MINING", 0)
-                    farming_xp = skills.get("SKILL_FARMING", 0)
-                    foraging_xp = skills.get("SKILL_FORAGING", 0)
-                    fishing_xp = skills.get("SKILL_FISHING", 0)
+                    last_login_ms = player_resp["player"].get("lastLogin", 0)
                 
                 if last_login_ms > 0:
                     last_login_date = datetime.datetime.fromtimestamp(last_login_ms / 1000.0, tz=datetime.timezone.utc)
@@ -83,6 +69,15 @@ class Command(BaseCommand):
                         player.save()
                         self.stdout.write(f"Deactivated {player.username} (Inactive since {last_login_date.date()})")
                         continue
+                
+                player_data_dict = member_data.get('player_data', {})
+                experience_data = player_data_dict.get('experience', {})
+                
+                combat_xp = experience_data.get("SKILL_COMBAT", 0)
+                mining_xp = experience_data.get("SKILL_MINING", 0)
+                farming_xp = experience_data.get("SKILL_FARMING", 0)
+                foraging_xp = experience_data.get("SKILL_FORAGING", 0)
+                fishing_xp = experience_data.get("SKILL_FISHING", 0)
                 
                 cata_xp = member_data.get("dungeons", {}).get("dungeon_types", {}).get("catacombs", {}).get("experience", 0)
                 skyblock_xp = member_data.get("leveling", {}).get("experience", 0)
