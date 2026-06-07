@@ -84,7 +84,7 @@
     <div class="container" style="max-width: 1100px; margin: 0 auto; padding: 40px 20px;">
         <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
             <div style="display: flex; align-items: center;">
-                <h1 style="margin: 0; font-size: 3rem;">
+                <h1 style="margin: 0; font-size: clamp(2rem, 5vw, 3rem);">
                     {{ username }}
                     <span style="color: var(--accent); font-size: 1rem; border: 2px solid var(--accent); padding: 4px 12px; border-radius: 8px; vertical-align: middle; margin-left: 15px; font-weight: 800;">{{ game_choice|upper }}</span>
                 </h1>
@@ -99,20 +99,20 @@
         </div>
         {% elif stats %}
         <div class="hero-card" style="width: 100%; margin-top: 0; margin-bottom: 40px; text-align: center; padding: 40px;">
-            <div style="display: flex; justify-content: center; gap: 80px; margin-bottom: 40px;">
+            <div style="display: flex; justify-content: center; gap: clamp(20px, 8vw, 80px); flex-wrap: wrap; margin-bottom: 40px;">
                 <div>
                     <p class="recent-label" style="margin: 0; font-size: 0.7rem; letter-spacing: 2px;">{% if game_choice == 'fortnite' %}TOTAL TIME PLAYED{% elif game_choice == 'clash' %}VILLAGE STATUS{% else %}PRIMARY METRIC{% endif %}</p>
-                    <div id="stat-main_stat" style="font-size: 3.5rem; font-weight: 900; color: white;">{{ stats.main_stat }}</div>
+                    <div id="stat-main_stat" aria-live="polite" style="font-size: clamp(2.5rem, 6vw, 3.5rem); font-weight: 900; color: white;">{{ stats.main_stat }}</div>
                 </div>
                 <div>
                     <p class="recent-label" style="margin: 0; font-size: 0.7rem; letter-spacing: 2px;">{{ stats.detail_label }}</p>
-                    <div id="stat-detail_value" style="font-size: 3.5rem; font-weight: 900; color: var(--accent);">{{ stats.detail_value }}</div>
+                    <div id="stat-detail_value" aria-live="polite" style="font-size: clamp(2.5rem, 6vw, 3.5rem); font-weight: 900; color: var(--accent);">{{ stats.detail_value }}</div>
                 </div>
             </div>
 
             <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px;">
                 <p class="recent-label" style="margin: 0; letter-spacing: 4px;">AI Performance Prediction</p>
-                <div id="ai-prediction-value" style="font-size: 8rem; font-weight: 900; color: var(--accent); text-shadow: 0 0 40px var(--accent-glow); line-height: 1; margin: 15px 0;">
+                <div id="ai-prediction-value" aria-live="polite" style="font-size: clamp(4rem, 15vw, 8rem); font-weight: 900; color: var(--accent); text-shadow: 0 0 40px var(--accent-glow); line-height: 1; margin: 15px 0;">
                     {{ stats.ai_score }}%
                 </div>
                 <p style="opacity: 0.7; font-size: 0.95rem; max-width: 550px; margin: 10px auto 0;">Neural Network analysis based on real-time combat data and historical performance metrics.</p>
@@ -137,7 +137,7 @@
             {% for stat in stats.raw_stats %}
             <div class="stat-card">
                 <span class="recent-label" style="margin: 0; font-size: 0.6rem; opacity: 0.6; letter-spacing: 1.5px;">{{ stat.key }}</span>
-                <span class="stat-value" id="stat-{{ stat.key }}">{{ stat.value }}</span>
+                <span class="stat-value" id="stat-{{ stat.key }}" aria-live="polite">{{ stat.value }}</span>
             </div>
             {% endfor %}
         </div>

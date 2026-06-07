@@ -30,7 +30,7 @@
         <p>Real-time Statistics across multiple platforms</p>
     
         <form action="/search/" method="GET">
-            <select name="game_choice" required>
+            <select name="game_choice" required aria-label="Select Game">
                 <option value="" disabled selected>Select Game</option>
                 <option value="fortnite">Fortnite</option>
                 <option value="steam">Steam Profile</option>
@@ -38,9 +38,9 @@
                 <option value="hypixel">Hypixel (MC)</option>
             </select>
     
-            <input type="text" name="username" placeholder="Enter Username or ID" required>
+            <input type="text" name="username" placeholder="Enter Username or ID" required aria-label="Enter Username or ID">
     
-            <select name="platform">
+            <select name="platform" aria-label="Select Platform">
                 <option value="epic">Epic / General</option>
                 <option value="xbl">Xbox Live</option>
                 <option value="psn">PlayStation Network</option>
