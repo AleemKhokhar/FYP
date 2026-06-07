@@ -61,6 +61,36 @@
             color: black;
             box-shadow: 0 0 15px var(--accent-glow);
         }
+
+        /* Mobile responsiveness overrides */
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px;
+            }
+            .header-container {
+                flex-direction: column;
+                text-align: center;
+                gap: 20px;
+            }
+            .hero-card, .dashboard-card {
+                padding: 25px 15px !important;
+            }
+            .insight-row {
+                flex-direction: column;
+                text-align: center;
+                align-items: center;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            }
+        }
     </style>
 </head>
 <body>
@@ -82,7 +112,7 @@
     </nav>
 
     <div class="container" style="max-width: 1100px; margin: 0 auto; padding: 40px 20px;">
-        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <div class="header-container" style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
             <div style="display: flex; align-items: center;">
                 <h1 style="margin: 0; font-size: clamp(2rem, 5vw, 3rem);">
                     {{ username }}
@@ -123,7 +153,7 @@
             <h3 style="color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; font-weight: 800;">AI Tactical Analysis</h3>
             <div style="display: flex; flex-direction: column; gap: 15px;">
                 {% for insight in stats.insights %}
-                <div style="display: flex; gap: 15px; background: rgba(255,255,255,0.04); padding: 20px; border-radius: 15px; border-left: 5px solid var(--accent);">
+                <div class="insight-row" style="display: flex; gap: 15px; background: rgba(255,255,255,0.04); padding: 20px; border-radius: 15px; border-left: 5px solid var(--accent);">
                     <span style="color: var(--accent); font-weight: 900; font-size: 0.8rem; min-width: 80px;">[SYSTEM]</span>
                     <span style="font-size: 1rem; line-height: 1.6; color: rgba(255,255,255,0.95);">{{ insight }}</span>
                 </div>
