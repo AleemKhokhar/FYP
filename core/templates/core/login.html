@@ -5,33 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - GamerTracker</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
-    <style>
-        .signup-link-wrapper {
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            width: 100%;
-        }
-        .signup-link {
-            color: rgba(255, 255, 255, 0.6);
-            text-decoration: none;
-            font-size: 0.85rem;
-            transition: all 0.3s ease;
-            letter-spacing: 0.5px;
-        }
-        .signup-link span {
-            color: var(--accent);
-            font-weight: 800;
-            text-transform: uppercase;
-            margin-left: 5px;
-        }
-        .signup-link:hover {
-            color: white;
-        }
-        .signup-link:hover span {
-            text-shadow: 0 0 10px var(--accent-glow);
-        }
-    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -44,13 +17,13 @@
         </div>
     </nav>
 
-    <div class="container" style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
-        <div class="hero-section" style="max-width: 450px; width: 100%; padding: 50px 40px;">
+    <div class="auth-wrapper">
+        <div class="hero-section auth-card-inner">
             <h1 style="margin-bottom: 10px;">Login</h1>
             <p style="color: var(--text-dim); margin-bottom: 30px;">Access your neural gaming profile</p>
             
             {% if error %}
-                <p style="color: #ff4444; font-weight: bold; margin-bottom: 15px; text-align: center;">{{ error }}</p>
+                <p class="error-text" style="margin-bottom: 15px; text-align: center;">{{ error }}</p>
             {% endif %}
             
             <form method="POST" action="" style="width: 100%;">

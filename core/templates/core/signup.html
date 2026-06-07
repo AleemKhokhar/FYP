@@ -1,9 +1,13 @@
+<!DOCTYPE html>
 {% load static %}
-<html>
-  <head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - GamerTracker</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
-  </head>
-  <body>
+</head>
+<body>
     <nav class="navbar">
         <div class="nav-container">
             <a href="{% url 'home' %}" class="logo">Gamer<span>Tracker</span></a>
@@ -18,21 +22,29 @@
             </div>
         </div>
     </nav>
-    <div class="hero-section">
-      <h1>Signup</h1>
-      <p>Signup</p>
-      
-      {% if error %}
-        <p style="color: #ff4444; font-weight: bold; margin-bottom: 15px;">{{ error }}</p>
-      {% endif %}
-      
-      <form method="POST" action="">
-        {% csrf_token %}
-        <input type="text" name="username" placeholder="Enter Username" required />
-        <input type="email" name="email" placeholder="Enter Email" required />
-        <input type="password" name="password" placeholder="Enter Password" required />
-        <button type="submit">Sign Up</button>
-      </form>
+    <div class="auth-wrapper">
+        <div class="hero-section auth-card-inner">
+            <h1 style="margin-bottom: 10px;">Sign Up</h1>
+            <p style="color: var(--text-dim); margin-bottom: 30px;">Create your neural gaming profile</p>
+            
+            {% if error %}
+                <p class="error-text" style="margin-bottom: 15px; text-align: center;">{{ error }}</p>
+            {% endif %}
+            
+            <form method="POST" action="" style="width: 100%;">
+                {% csrf_token %}
+                <input type="text" name="username" placeholder="Username" required style="margin-bottom: 15px;" />
+                <input type="email" name="email" placeholder="Email Address" required style="margin-bottom: 15px;" />
+                <input type="password" name="password" placeholder="Password" required style="margin-bottom: 25px;" />
+                <button type="submit" class="btn-primary" style="width: 100%;">Initialize Account</button>
+            </form>
+            
+            <div class="signup-link-wrapper">
+                <a href="{% url 'login' %}" class="signup-link">
+                    Already have an account? <span>Log In</span>
+                </a>
+            </div>
+        </div>
     </div>
-  </body>
+</body>
 </html>

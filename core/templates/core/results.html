@@ -5,100 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ username }} - {{ game_choice|title }} Stats</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
-    <style>
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 20px;
-            width: 100%;
-            margin-top: 40px;
-        }
-
-        .stat-card {
-            background: var(--glass);
-            border: 1px solid var(--glass-bright);
-            border-radius: 24px;
-            padding: 20px;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 160px;
-            height: 100%;
-            box-sizing: border-box;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 900;
-            color: white;
-            word-break: break-all;
-            overflow-wrap: anywhere;
-            line-height: 1.2;
-            margin-top: 10px;
-            width: 100%;
-        }
-
-        .new-search-btn {
-            color: var(--accent);
-            text-decoration: none;
-            font-weight: 800;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border: 1px solid rgba(0, 255, 136, 0.3);
-            padding: 8px 16px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            background: rgba(0, 255, 136, 0.05);
-        }
-
-        .new-search-btn:hover {
-            background: var(--accent);
-            color: black;
-            box-shadow: 0 0 15px var(--accent-glow);
-        }
-
-        /* Mobile responsiveness overrides */
-        @media (max-width: 768px) {
-            .nav-container {
-                flex-direction: column;
-                align-items: center;
-                gap: 15px;
-                text-align: center;
-                width: 100%;
-            }
-            .nav-links {
-                width: 100%;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 10px;
-            }
-            .header-container {
-                flex-direction: column;
-                text-align: center;
-                gap: 20px;
-            }
-            .hero-card, .dashboard-card {
-                padding: 25px 15px !important;
-            }
-            .dashboard-card {
-                text-align: center !important;
-            }
-            .insight-row {
-                flex-direction: column;
-                text-align: center;
-                align-items: center;
-            }
-            .stats-grid {
-                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-                justify-content: center;
-            }
-        }
-    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -204,6 +110,14 @@
     </div>
 
     <script>
+        const hamburger = document.querySelector('.hamburger');
+        const navLinks = document.querySelector('.nav-links');
+        if (hamburger && navLinks) {
+            hamburger.addEventListener('click', () => {
+                navLinks.classList.toggle('active');
+            });
+        }
+
         const username = "{{ username|escapejs }}";
         const safeName = username.replace(/[^a-zA-Z0-9._-]/g, "_");
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";

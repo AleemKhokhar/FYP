@@ -6,37 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GamerTracker | Home</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
-    <style>
-        /* Mobile responsiveness overrides */
-        @media (max-width: 768px) {
-            .nav-container {
-                flex-direction: column;
-                align-items: center;
-                gap: 15px;
-                text-align: center;
-                width: 100%;
-            }
-            .nav-links {
-                width: 100%;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 10px;
-            }
-            form {
-                display: flex;
-                flex-direction: column;
-                gap: 15px;
-            }
-            form > * {
-                width: 100%;
-                box-sizing: border-box;
-            }
-            .recent-header {
-                flex-direction: column !important;
-                gap: 10px;
-            }
-        }
-    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -82,7 +51,7 @@
     
         {% if history %}
         <div style="margin-top: 30px; border-top: 1px solid #333; padding-top: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div class="recent-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <p style="font-size: 0.8rem; text-transform: uppercase; color: #888; margin: 0;">Recent Searches</p>
                 <a href="{% url 'clear_history' %}" style="color: #ff4444; font-size: 0.7rem; text-decoration: none; text-transform: uppercase; font-weight: bold;">Clear All</a>
             </div>
