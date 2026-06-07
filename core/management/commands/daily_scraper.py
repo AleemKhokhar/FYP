@@ -20,13 +20,19 @@ class Command(BaseCommand):
         self.stdout.write(f"Starting scrape for {active_players.count()} active players...")
         
         fourteen_days_ago = timezone.now() - timedelta(days=14)
+        today = timezone.now().date()
+        session = requests.Session()
         
         for player in active_players:
+            if DailyStatSnapshot.objects.filter(player=player, date=today).exists():
+                self.stdout.write(f"Snapshot already exists for {player.username} today, skipping...")
+                continue
+
             profile_url = f"https://api.hypixel.net/v2/skyblock/profiles?key={api_key}&uuid={player.uuid}"
             player_url = f"https://api.hypixel.net/v2/player?key={api_key}&uuid={player.uuid}"
             
             try:
-                profile_resp = requests.get(profile_url).json()
+                profile_resp = session.get(profile_url).json()
                 time.sleep(1.5) 
                 
                 if not profile_resp.get("success"):
@@ -42,7 +48,7 @@ class Command(BaseCommand):
                         time.sleep(60)
                     continue
                 
-                player_resp = requests.get(player_url).json()
+                player_resp = session.get(player_url).json()
                 time.sleep(1.5)
                 
                 if not profile_resp.get("profiles"):
@@ -83,10 +89,13 @@ class Command(BaseCommand):
                 skyblock_xp = member_data.get("leveling", {}).get("experience", 0)
                 purse = member_data.get("coin_purse", 0)
                 
+                bank_balance = profile.get("banking", {}).get("balance", 0.0)
+                
                 DailyStatSnapshot.objects.create(
                     player=player,
                     catacombs_xp=cata_xp,
                     skyblock_xp=skyblock_xp,
+                    bank_balance=bank_balance,
                     purse_balance=purse,
                     combat_xp=combat_xp,
                     mining_xp=mining_xp,
