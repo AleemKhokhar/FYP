@@ -82,6 +82,9 @@
             .hero-card, .dashboard-card {
                 padding: 25px 15px !important;
             }
+            .dashboard-card {
+                text-align: center !important;
+            }
             .insight-row {
                 flex-direction: column;
                 text-align: center;
@@ -89,6 +92,7 @@
             }
             .stats-grid {
                 grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+                justify-content: center;
             }
         }
     </style>
@@ -173,7 +177,7 @@
         </div>
 
         {% if user.is_authenticated %}
-        <form action="{% url 'link_account' %}" method="POST" style="margin-top: 60px; width: 100%;">
+        <form action="{% url 'link_account' %}" method="POST" style="margin-top: 60px; width: 100%; text-align: center;">
             {% csrf_token %}
             <input type="hidden" name="game_username" value="{{ username }}" />
             <input type="hidden" name="game_choice" value="{{ game_choice }}" />
