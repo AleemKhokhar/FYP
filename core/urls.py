@@ -18,4 +18,5 @@ urlpatterns = [
     path('export-data/', views.export_user_data, name='export_data'),
     path('delete-profile/', views.delete_user_profile, name='delete_profile'),
     path('settings/', views.account_settings, name='account_settings'),
+    path('api-refresh/', views.api_refresh, name='api_refresh'),
 ]

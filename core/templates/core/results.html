@@ -102,11 +102,11 @@
             <div style="display: flex; justify-content: center; gap: 80px; margin-bottom: 40px;">
                 <div>
                     <p class="recent-label" style="margin: 0; font-size: 0.7rem; letter-spacing: 2px;">{% if game_choice == 'fortnite' %}TOTAL TIME PLAYED{% elif game_choice == 'clash' %}VILLAGE STATUS{% else %}PRIMARY METRIC{% endif %}</p>
-                    <div style="font-size: 3.5rem; font-weight: 900; color: white;">{{ stats.main_stat }}</div>
+                    <div id="stat-main_stat" style="font-size: 3.5rem; font-weight: 900; color: white;">{{ stats.main_stat }}</div>
                 </div>
                 <div>
                     <p class="recent-label" style="margin: 0; font-size: 0.7rem; letter-spacing: 2px;">{{ stats.detail_label }}</p>
-                    <div style="font-size: 3.5rem; font-weight: 900; color: var(--accent);">{{ stats.detail_value }}</div>
+                    <div id="stat-detail_value" style="font-size: 3.5rem; font-weight: 900; color: var(--accent);">{{ stats.detail_value }}</div>
                 </div>
             </div>
 
@@ -185,6 +185,14 @@
         };
 
         statSocket.onclose = function (e) { console.error("Socket closed unexpectedly"); };
+
+        // Check for updates in the background every 60 seconds
+        setInterval(() => {
+            const gameChoice = "{{ game_choice|escapejs }}";
+            const platform = "{{ platform|escapejs }}";
+            fetch(`/api-refresh/?game_choice=${gameChoice}&username=${encodeURIComponent(username)}&platform=${platform}`)
+                .catch(err => console.error("Auto-refresh failed:", err));
+        }, 60000); // 60000ms = 60 seconds
     </script>
 </body>
 </html>

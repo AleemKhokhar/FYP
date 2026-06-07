@@ -20,7 +20,7 @@ class StatConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
 
-    async def stat_update(self, event):
+    async def stats_update(self, event):
         stats = event['stats']
         await self.send(text_data=json.dumps({
             'stats': stats

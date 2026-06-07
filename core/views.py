@@ -34,13 +34,16 @@ from .integrations import GAME_REGISTRY
 def broadcast_stats(username, data):
     channel_layer = get_channel_layer()
     safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', username)
-    async_to_sync(channel_layer.group_send)(
-        f"stats_{safe_name}",
-        {
-            "type": "stats_update",
-            "stats": data,
-        },
-    )
+    try:
+        async_to_sync(channel_layer.group_send)(
+            f"stats_{safe_name}",
+            {
+                "type": "stats_update",
+                "stats": data,
+            },
+        )
+    except Exception as e:
+        print(f"WebSocket Broadcast Error for {username}: {e}")
 
 @login_required
 def account_settings(request):
@@ -164,12 +167,49 @@ def game_search(request):
         if 'raw_stats' in stats_data:
             live_data = {s['key']: s['value'] for s in stats_data['raw_stats']}
             live_data['ai_score'] = prediction
+            live_data['main_stat'] = stats_data.get('main_stat')
+            live_data['detail_value'] = stats_data.get('detail_value')
             broadcast_stats(username, live_data)
             
     return render(request, "core/results.html", {
         "username": username, "game_choice": game_choice, "platform": platform,
         "stats": stats_data, "error": error, "is_linked": is_linked
     })
+
+def api_refresh(request):
+    """Silently fetches fresh stats in the background and broadcasts them."""
+    game_choice = request.GET.get("game_choice")
+    username = request.GET.get("username", "").strip()
+    platform = request.GET.get("platform", "").strip()
+
+    integration = GAME_REGISTRY.get(game_choice)
+    if not integration or not username:
+        return JsonResponse({"error": "Invalid request"}, status=400)
+
+    stats_data, error = integration.fetch_stats(username, platform)
+    if error:
+        return JsonResponse({"error": error}, status=400)
+
+    m1_val = float(stats_data.get('m1', 0))
+    m2_val = float(stats_data.get('m2', 0))
+    m3_val = float(stats_data.get('m3', 0))
+
+    norm_m1, norm_m2, norm_m3, insights = integration.get_insights(m1_val, m2_val, m3_val)
+    prediction = predict_performance(norm_m1, norm_m2, norm_m3)
+    stats_data['ai_score'] = prediction
+
+    # Update the cache so it stays fresh
+    cache_key = f"stats_{game_choice}_{username}_{platform}"
+    cache.set(cache_key, stats_data, 300)
+
+    if 'raw_stats' in stats_data:
+        live_data = {s['key']: s['value'] for s in stats_data['raw_stats']}
+        live_data['ai_score'] = prediction
+        live_data['main_stat'] = stats_data.get('main_stat')
+        live_data['detail_value'] = stats_data.get('detail_value')
+        broadcast_stats(username, live_data)
+
+    return JsonResponse({"status": "refreshed"})
 
 @login_required
 def link_account(request):
