@@ -85,6 +85,24 @@
             {% endfor %}
         </div>
 
+        {% if stats.future_predictions %}
+        <div class="tactical-card" style="margin-top: 40px; padding: 30px; border-radius: 24px; background: rgba(0, 255, 136, 0.05); border: 1px solid var(--accent); text-align: center;">
+            <h3 style="color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; font-weight: 800; margin-top: 0;">AI 7-Day Trajectory Forecast</h3>
+            <div class="stats-grid" style="margin-top: 0;">
+                {% for pred in stats.future_predictions %}
+                <div class="stat-card" style="min-height: 120px; background: rgba(15, 15, 15, 0.9);">
+                    <p class="dash-card-label" style="color: var(--text-dim); text-transform: uppercase; font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 10px;">
+                        {{ pred.label }}
+                    </p>
+                    <p class="stat-value" style="color: white; font-size: 1.4rem; text-shadow: 0 0 10px rgba(255,255,255,0.2); margin: 0;">
+                        {{ pred.value }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if user.is_authenticated %}
         <form action="{% url 'link_account' %}" method="POST" style="margin-top: 60px; width: 100%; text-align: center;">
             {% csrf_token %}
