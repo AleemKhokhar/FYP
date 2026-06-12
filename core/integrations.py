@@ -4,7 +4,6 @@ import math
 from datetime import datetime
 
 class GameIntegration:
-    """Blueprint: Every game must be able to fetch stats and generate insights."""
     def fetch_stats(self, username, platform=None):
         raise NotImplementedError
         
@@ -204,7 +203,6 @@ class HypixelIntegration(GameIntegration):
         return norm_m1, norm_m2, norm_m3, insights
 
 
-# The "Directory" that maps the name to the specific Box
 GAME_REGISTRY = {
     'fortnite': FortniteIntegration(),
     'clash': ClashIntegration(),

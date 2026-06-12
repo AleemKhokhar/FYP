@@ -177,7 +177,6 @@ def game_search(request):
     })
 
 def api_refresh(request):
-    """Silently fetches fresh stats in the background and broadcasts them."""
     game_choice = request.GET.get("game_choice")
     username = request.GET.get("username", "").strip()
     platform = request.GET.get("platform", "").strip()
@@ -198,7 +197,6 @@ def api_refresh(request):
     prediction = predict_performance(norm_m1, norm_m2, norm_m3)
     stats_data['ai_score'] = prediction
 
-    # Update the cache so it stays fresh
     cache_key = f"stats_{game_choice}_{username}_{platform}"
     cache.set(cache_key, stats_data, 300)
 
