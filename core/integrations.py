@@ -10,6 +10,9 @@ class GameIntegration:
     def get_insights(self, m1, m2, m3):
         raise NotImplementedError
 
+    def get_future_predictions(self, future_m1, future_m2, future_m3):
+        return []
+
 
 class FortniteIntegration(GameIntegration):
     def fetch_stats(self, username, platform=None):
@@ -52,6 +55,15 @@ class FortniteIntegration(GameIntegration):
             insights.append("Strategy: Excellent win rate. Strong late-game execution.")
         return norm_m1, norm_m2, norm_m3, insights
 
+    def get_future_predictions(self, future_m1, future_m2, future_m3):
+        kd = (future_m1 / 10.0) * 5.0
+        win_rate = (future_m2 / 10.0) * 20.0
+        wins = (future_m3 / 10.0) * 1000.0
+        return [
+            {"label": "Projected Future K/D", "value": round(kd, 2)},
+            {"label": "Projected Future Win Rate", "value": f"{round(win_rate, 1)}%"},
+            {"label": "Projected Future Wins", "value": int(wins)}
+        ]
 
 class ClashIntegration(GameIntegration):
     def fetch_stats(self, username, platform=None):
@@ -97,6 +109,15 @@ class ClashIntegration(GameIntegration):
             insights.append("Clan Wars: Veteran war attacker with high star count.")
         return norm_m1, norm_m2, norm_m3, insights
 
+    def get_future_predictions(self, future_m1, future_m2, future_m3):
+        th = (future_m1 / 10.0) * 16.0
+        trophies = (future_m2 / 10.0) * 5000.0
+        stars = (future_m3 / 10.0) * 2000.0
+        return [
+            {"label": "Projected Town Hall", "value": int(th)},
+            {"label": "Projected Trophies", "value": int(trophies)},
+            {"label": "Projected War Stars", "value": int(stars)}
+        ]
 
 class SteamIntegration(GameIntegration):
     def fetch_stats(self, username, platform=None):
@@ -148,6 +169,11 @@ class SteamIntegration(GameIntegration):
             insights.append("Engagement: Craft badges during seasonal sales to efficiently level up.")
         return norm_m1, norm_m2, norm_m3, insights
 
+    def get_future_predictions(self, future_m1, future_m2, future_m3):
+        level = (future_m1 / 10.0) * 100.0
+        return [
+            {"label": "Projected Steam Level", "value": int(level)}
+        ]
 
 class HypixelIntegration(GameIntegration):
     def fetch_stats(self, username, platform=None):
@@ -160,48 +186,72 @@ class HypixelIntegration(GameIntegration):
             if r_uuid.status_code != 200:
                 return None, "Minecraft Account Not Found"
             uuid = r_uuid.json().get("id")
-            url_stats = f"https://api.hypixel.net/v2/player?uuid={uuid}"
+            
+            # Switch to fetching deep Skyblock profile data to match AI training
+            url_stats = f"https://api.hypixel.net/v2/skyblock/profiles?uuid={uuid}"
             headers = {"API-Key": api_key}
             r_stats = requests.get(url_stats, headers=headers, timeout=10)
             data = r_stats.json()
-            player = data.get("player")
-            if not player:
-                return None, "Player has no Hypixel data."
-            exp = player.get("networkExp") or 0
-            lvl = (math.sqrt(2 * exp + 15312.5) - 125) / 50
-            login_ms = player.get("firstLogin") or 0
-            login_date = datetime.fromtimestamp(login_ms / 1000.0).strftime('%d %b %Y') if login_ms else "Unknown"
-            karma = player.get("karma") or 0
-            achievement_points = player.get("achievementPoints") or 0
+            
+            profiles = data.get("profiles")
+            if not profiles:
+                return None, "Player has no Skyblock data."
+                
+            # Find their currently active profile
+            profile = next((p for p in profiles if p.get("selected")), profiles[0])
+            clean_uuid = uuid.replace("-", "")
+            member = profile.get("members", {}).get(clean_uuid, {})
+            
+            if not member:
+                return None, "No member data found in profile."
+                
+            # Extract the exact metrics the AI trained on
+            sb_xp = member.get("leveling", {}).get("experience", 0)
+            combat_xp = member.get("player_data", {}).get("experience", {}).get("SKILL_COMBAT", 0)
+            purse = member.get("coin_purse", 0)
+            bank = profile.get("banking", {}).get("balance", 0)
+            total_wealth = purse + bank
+            
+            sb_level = sb_xp / 100  # Rough estimation for display
+            
             return {
-                "main_stat": f"Network Level {max(1, math.floor(lvl))}",
-                "detail_label": "Karma",
-                "detail_value": f"{karma:,}",
-                "m1": float(lvl),
-                "m2": float(karma) / 1000,
-                "m3": float(achievement_points),
+                "main_stat": f"Skyblock Level {math.floor(sb_level)}",
+                "detail_label": "Net Worth",
+                "detail_value": f"{int(total_wealth):,}",
+                "m1": float(sb_xp),
+                "m2": float(combat_xp),
+                "m3": float(total_wealth),
                 "raw_stats": [
-                    {"key": "Achievement Points", "value": achievement_points},
-                    {"key": "First Joined", "value": login_date},
-                    {"key": "Recent Game", "value": player.get("mostRecentGameType", "None")}
+                    {"key": "Skyblock XP", "value": f"{int(sb_xp):,}"},
+                    {"key": "Combat XP", "value": f"{int(combat_xp):,}"},
+                    {"key": "Bank Balance", "value": f"{int(bank):,}"}
                 ]
             }, None
         except Exception as e:
             return None, str(e)
 
     def get_insights(self, m1_val, m2_val, m3_val):
-        norm_m1 = min(m1_val / 250.0, 1.0) * 10
-        norm_m2 = min(m2_val / 5000.0, 1.0) * 10
-        norm_m3 = min(m3_val / 15000.0, 1.0) * 10
+        norm_m1 = min(m1_val / 500000.0, 1.0) * 10
+        norm_m2 = min(m2_val / 50000000.0, 1.0) * 10
+        norm_m3 = min(m3_val / 1000000000.0, 1.0) * 10
         insights = []
-        if m1_val > 100: 
-            insights.append("Dedication: Veteran Hypixel player with high Network Level.")
+        if m1_val > 100000: 
+            insights.append("Progression: High Skyblock XP indicates strong mid-to-endgame status.")
         else: 
-            insights.append("Progression: Complete daily challenges across minigames to boost Network Level.")
-        if m2_val > 1000: 
-            insights.append("Community: High Karma indicates positive player interactions.")
+            insights.append("Progression: Focus on fairy souls and cheap accessories to gain early XP.")
+        if m3_val > 50000000: 
+            insights.append("Economy: Strong wealth generation. Consider investing in minion upgrades.")
         return norm_m1, norm_m2, norm_m3, insights
 
+    def get_future_predictions(self, future_m1, future_m2, future_m3):
+        sb_xp = (future_m1 / 10.0) * 500000.0
+        combat_xp = (future_m2 / 10.0) * 50000000.0
+        wealth = (future_m3 / 10.0) * 1000000000.0
+        return [
+            {"label": "7-Day Projected SB XP", "value": f"{int(sb_xp):,}"},
+            {"label": "7-Day Projected Combat XP", "value": f"{int(combat_xp):,}"},
+            {"label": "7-Day Projected Wealth", "value": f"{int(wealth):,}"}
+        ]
 
 GAME_REGISTRY = {
     'fortnite': FortniteIntegration(),

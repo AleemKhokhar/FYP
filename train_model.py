@@ -26,7 +26,6 @@ def load_hypixel_data():
     max_combat = max(all_snaps.values_list('combat_xp', flat=True)) or 1
     max_wealth = max(all_snaps.values_list('bank_balance', flat=True)) or 1
 
-    # Fix N+1 query issue by downloading all snapshots at once and grouping them in Python.
     print("Formatting player progression data...")
     all_snaps_list = list(all_snaps.order_by('player_id', 'date'))
     player_groups = {}
@@ -42,13 +41,21 @@ def load_hypixel_data():
             first = snaps[0]
             last = snaps[-1]
             
-            x_m1 = min(first.skyblock_xp / max_sb_xp, 1.0)
-            x_m2 = min(first.combat_xp / max_combat, 1.0)
-            x_m3 = min(first.bank_balance / max_wealth, 1.0)
+            days_diff = (last.date - first.date).days
+            if days_diff <= 0:
+                continue
+                
+            sb_gain = (last.skyblock_xp - first.skyblock_xp) / days_diff
+            cb_gain = (last.combat_xp - first.combat_xp) / days_diff
+            wl_gain = (last.bank_balance - first.bank_balance) / days_diff
             
-            y_m1 = min(last.skyblock_xp / max_sb_xp, 1.0)
-            y_m2 = min(last.combat_xp / max_combat, 1.0)
-            y_m3 = min(last.bank_balance / max_wealth, 1.0)
+            x_m1 = min(last.skyblock_xp / max_sb_xp, 1.0)
+            x_m2 = min(last.combat_xp / max_combat, 1.0)
+            x_m3 = min(last.bank_balance / max_wealth, 1.0)
+            
+            y_m1 = min((last.skyblock_xp + (sb_gain * 7)) / max_sb_xp, 1.0)
+            y_m2 = min((last.combat_xp + (cb_gain * 7)) / max_combat, 1.0)
+            y_m3 = min((last.bank_balance + (wl_gain * 7)) / max_wealth, 1.0)
             
             X_data.append([x_m1, x_m2, x_m3])
             y_data.append([y_m1, y_m2, y_m3])

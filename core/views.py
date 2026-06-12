@@ -158,15 +158,20 @@ def game_search(request):
         norm_m1, norm_m2, norm_m3, insights = integration.get_insights(m1_val, m2_val, m3_val)
 
         prediction = predict_performance(norm_m1, norm_m2, norm_m3)
-        stats_data['ai_score'] = prediction
+        stats_data['ai_score'] = prediction['ai_score']
         stats_data['insights'] = insights
+        stats_data['future_predictions'] = integration.get_future_predictions(
+            prediction['future_m1'],
+            prediction['future_m2'],
+            prediction['future_m3']
+        )
 
         if request.user.is_authenticated:
             is_linked = SavedGame.objects.filter(user=request.user, game_username=username, platform=game_choice).exists()
             
         if 'raw_stats' in stats_data:
             live_data = {s['key']: s['value'] for s in stats_data['raw_stats']}
-            live_data['ai_score'] = prediction
+            live_data['ai_score'] = prediction['ai_score']
             live_data['main_stat'] = stats_data.get('main_stat')
             live_data['detail_value'] = stats_data.get('detail_value')
             broadcast_stats(username, live_data)
@@ -195,14 +200,19 @@ def api_refresh(request):
 
     norm_m1, norm_m2, norm_m3, insights = integration.get_insights(m1_val, m2_val, m3_val)
     prediction = predict_performance(norm_m1, norm_m2, norm_m3)
-    stats_data['ai_score'] = prediction
+    stats_data['ai_score'] = prediction['ai_score']
+    stats_data['future_predictions'] = integration.get_future_predictions(
+        prediction['future_m1'],
+        prediction['future_m2'],
+        prediction['future_m3']
+    )
 
     cache_key = f"stats_{game_choice}_{username}_{platform}"
     cache.set(cache_key, stats_data, 300)
 
     if 'raw_stats' in stats_data:
         live_data = {s['key']: s['value'] for s in stats_data['raw_stats']}
-        live_data['ai_score'] = prediction
+        live_data['ai_score'] = prediction['ai_score']
         live_data['main_stat'] = stats_data.get('main_stat')
         live_data['detail_value'] = stats_data.get('detail_value')
         broadcast_stats(username, live_data)
@@ -294,8 +304,12 @@ def player_compare(request):
         if d1 and d2:
             n1_m1, n1_m2, n1_m3, _ = integration.get_insights(d1['m1'], d1['m2'], d1['m3'])
             n2_m1, n2_m2, n2_m3, _ = integration.get_insights(d2['m1'], d2['m2'], d2['m3'])
-            d1['ai_score'] = predict_performance(n1_m1, n1_m2, n1_m3)
-            d2['ai_score'] = predict_performance(n2_m1, n2_m2, n2_m3)
+            p1 = predict_performance(n1_m1, n1_m2, n1_m3)
+            p2 = predict_performance(n2_m1, n2_m2, n2_m3)
+            d1['ai_score'] = p1['ai_score']
+            d2['ai_score'] = p2['ai_score']
+            d1['future_predictions'] = integration.get_future_predictions(p1['future_m1'], p1['future_m2'], p1['future_m3'])
+            d2['future_predictions'] = integration.get_future_predictions(p2['future_m1'], p2['future_m2'], p2['future_m3'])
         else:
             error = "Players not found."
     return render(request, 'core/comparison.html', {'user1': u1, 'user2': u2, 'data1': d1, 'data2': d2, 'game_choice': game, 'error': error})

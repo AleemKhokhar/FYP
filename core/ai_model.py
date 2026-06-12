@@ -36,6 +36,11 @@ def predict_performance(m1, m2, m3):
             future_preds = model(input_tensor)[0]
             weighted_score = float((future_preds[0] * 0.5) + (future_preds[1] * 0.3) + (future_preds[2] * 0.2)) * 100
         
-        return round(max(weighted_score, 0.5), 1)
+        return {
+            "ai_score": round(max(weighted_score, 0.5), 1),
+            "future_m1": float(future_preds[0]) * 10.0,
+            "future_m2": float(future_preds[1]) * 10.0,
+            "future_m3": float(future_preds[2]) * 10.0
+        }
     except:
-        return 0.5
+        return {"ai_score": 0.5, "future_m1": 0.0, "future_m2": 0.0, "future_m3": 0.0}
