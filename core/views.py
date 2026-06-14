@@ -18,13 +18,19 @@ import requests
 import math
 import re
 import numpy as np
+import time
 import json
+import math
 from datetime import datetime
 from io import BytesIO
+
+import requests
+import numpy as np
 from xhtml2pdf import pisa
 from sklearn.metrics.pairwise import cosine_similarity
 
 from .models import SavedGame, Profile
+from .models import SavedGame, Profile, APILog
 from .forms import ProfileUpdateForm, AccountUpdateForm
 from .ai_model import predict_performance
 from .models import APILog
@@ -108,8 +114,10 @@ def game_search(request):
         return HttpResponseBadRequest("Unsupported game")
 
     recent_searches = request.session.get('recent_searches', [])
-    if username and username not in recent_searches:
-        recent_searches.insert(0, username)
+    if username:
+        search_entry = {'username': username, 'game_choice': game_choice, 'platform': platform}
+        recent_searches = [s for s in recent_searches if isinstance(s, dict) and s != search_entry]
+        recent_searches.insert(0, search_entry)
         request.session['recent_searches'] = recent_searches[:5]
         
     cache_key = f"stats_{game_choice}_{username}_{platform}"
@@ -151,20 +159,13 @@ def game_search(request):
     is_linked = False
     
     if stats_data and not error:
-        m1_val = float(stats_data.get('m1', 0))
-        m2_val = float(stats_data.get('m2', 0))
-        m3_val = float(stats_data.get('m3', 0))
         
-        norm_m1, norm_m2, norm_m3, insights = integration.get_insights(m1_val, m2_val, m3_val)
+        insights_data = integration.get_insights(stats_data)
 
-        prediction = predict_performance(norm_m1, norm_m2, norm_m3)
+        prediction = predict_performance(insights_data['norms'])
         stats_data['ai_score'] = prediction['ai_score']
-        stats_data['insights'] = insights
-        stats_data['future_predictions'] = integration.get_future_predictions(
-            prediction['future_m1'],
-            prediction['future_m2'],
-            prediction['future_m3']
-        )
+        stats_data['insights'] = insights_data['insights']
+        stats_data['future_predictions'] = integration.get_future_predictions(prediction, stats_data)
 
         if request.user.is_authenticated:
             is_linked = SavedGame.objects.filter(user=request.user, game_username=username, platform=game_choice).exists()
@@ -194,18 +195,11 @@ def api_refresh(request):
     if error:
         return JsonResponse({"error": error}, status=400)
 
-    m1_val = float(stats_data.get('m1', 0))
-    m2_val = float(stats_data.get('m2', 0))
-    m3_val = float(stats_data.get('m3', 0))
 
-    norm_m1, norm_m2, norm_m3, insights = integration.get_insights(m1_val, m2_val, m3_val)
-    prediction = predict_performance(norm_m1, norm_m2, norm_m3)
+    insights_data = integration.get_insights(stats_data)
+    prediction = predict_performance(insights_data['norms'])
     stats_data['ai_score'] = prediction['ai_score']
-    stats_data['future_predictions'] = integration.get_future_predictions(
-        prediction['future_m1'],
-        prediction['future_m2'],
-        prediction['future_m3']
-    )
+    stats_data['future_predictions'] = integration.get_future_predictions(prediction, stats_data)
 
     cache_key = f"stats_{game_choice}_{username}_{platform}"
     cache.set(cache_key, stats_data, 300)
@@ -225,9 +219,22 @@ def link_account(request):
         game_u, game_c = request.POST.get('game_username'), request.POST.get('game_choice')
         stat, ai_s = request.POST.get('main_stat'), request.POST.get('ai_score', 0)
         m1, m2, m3 = request.POST.get('m1', 0), request.POST.get('m2', 0), request.POST.get('m3', 0)
+        game_u = request.POST.get('game_username')
+        game_c = request.POST.get('game_choice')
+        stat = request.POST.get('main_stat')
+        ai_s = request.POST.get('ai_score', 0)
+        m1 = request.POST.get('m1', 0)
+        m2 = request.POST.get('m2', 0)
+        m3 = request.POST.get('m3', 0)
         SavedGame.objects.update_or_create(
             user=request.user, game_username=game_u, platform=game_c,
             defaults={'time_played': stat, 'm1': m1, 'm2': m2, 'm3': m3, 'ai_score': float(ai_s or 0)}
+            user=request.user, 
+            game_username=game_u, 
+            platform=game_c,
+            defaults={
+                'time_played': stat, 'm1': m1, 'm2': m2, 'm3': m3, 'ai_score': float(ai_s or 0)
+            }
         )
     return redirect('dashboard')
 
@@ -296,38 +303,52 @@ def profile_edit(request):
 def player_compare(request):
     u1, u2 = request.GET.get('user1', '').strip(), request.GET.get('user2', '').strip()
     game, platform = request.GET.get('game_choice'), request.GET.get('platform', 'epic')
+    u1 = request.GET.get('user1', '').strip()
+    u2 = request.GET.get('user2', '').strip()
+    game = request.GET.get('game_choice')
+    platform = request.GET.get('platform', 'epic')
     d1, d2, error = None, None, None
     integration = GAME_REGISTRY.get(game)
     if u1 and u2 and integration:
         d1, _ = integration.fetch_stats(u1, platform)
         d2, _ = integration.fetch_stats(u2, platform)
         if d1 and d2:
-            n1_m1, n1_m2, n1_m3, _ = integration.get_insights(d1['m1'], d1['m2'], d1['m3'])
-            n2_m1, n2_m2, n2_m3, _ = integration.get_insights(d2['m1'], d2['m2'], d2['m3'])
-            p1 = predict_performance(n1_m1, n1_m2, n1_m3)
-            p2 = predict_performance(n2_m1, n2_m2, n2_m3)
+            i1 = integration.get_insights(d1)
+            i2 = integration.get_insights(d2)
+            p1 = predict_performance(i1['norms'])
+            p2 = predict_performance(i2['norms'])
             d1['ai_score'] = p1['ai_score']
             d2['ai_score'] = p2['ai_score']
-            d1['future_predictions'] = integration.get_future_predictions(p1['future_m1'], p1['future_m2'], p1['future_m3'])
-            d2['future_predictions'] = integration.get_future_predictions(p2['future_m1'], p2['future_m2'], p2['future_m3'])
+            d1['future_predictions'] = integration.get_future_predictions(p1, d1)
+            d2['future_predictions'] = integration.get_future_predictions(p2, d2)
         else:
             error = "Players not found."
     return render(request, 'core/comparison.html', {'user1': u1, 'user2': u2, 'data1': d1, 'data2': d2, 'game_choice': game, 'error': error})
 
 def clear_history(request):
     if 'recent_searches' in request.session: del request.session['recent_searches']
+    if 'recent_searches' in request.session: 
+        del request.session['recent_searches']
     return redirect('home')
 
 def login_view(request):
     error = None
     if request.method == "POST":
         u, p = request.POST.get('username'), request.POST.get('password')
+        u = request.POST.get('username')
+        p = request.POST.get('password')
         user = authenticate(request, username=u, password=p)
         if user:
             if EmailAddress.objects.filter(user=user, verified=True).exists():
                 login(request, user); return redirect('dashboard')
             else: error = "Verify email first."
         else: error = "Invalid login."
+                login(request, user)
+                return redirect('dashboard')
+            else: 
+                error = "Verify email first."
+        else: 
+            error = "Invalid login."
     return render(request, 'core/login.html', {'error': error})
 
 def signup_view(request):
@@ -336,6 +357,13 @@ def signup_view(request):
         u, e, p = request.POST.get('username'), request.POST.get('email'), request.POST.get('password')
         if User.objects.filter(username=u).exists(): error = "Username taken."
         elif User.objects.filter(email=e).exists(): error = "Email registered."
+        u = request.POST.get('username')
+        e = request.POST.get('email')
+        p = request.POST.get('password')
+        if User.objects.filter(username=u).exists(): 
+            error = "Username taken."
+        elif User.objects.filter(email=e).exists(): 
+            error = "Email registered."
         else:
             user = User.objects.create_user(username=u, email=e, password=p)
             email_address = EmailAddress.objects.create(user=user, email=e, primary=True, verified=False)

@@ -7,10 +7,10 @@ class GameIntegration:
     def fetch_stats(self, username, platform=None):
         raise NotImplementedError
         
-    def get_insights(self, m1, m2, m3):
+    def get_insights(self, stats_data):
         raise NotImplementedError
 
-    def get_future_predictions(self, future_m1, future_m2, future_m3):
+    def get_future_predictions(self, prediction, stats_data):
         return []
 
 
@@ -42,7 +42,10 @@ class FortniteIntegration(GameIntegration):
         except Exception as e:
             return None, str(e)
 
-    def get_insights(self, m1_val, m2_val, m3_val):
+    def get_insights(self, stats_data):
+        m1_val = float(stats_data.get('m1', 0))
+        m2_val = float(stats_data.get('m2', 0))
+        m3_val = float(stats_data.get('m3', 0))
         norm_m1 = min(m1_val / 5.0, 1.0) * 10
         norm_m2 = min(m2_val / 20.0, 1.0) * 10
         norm_m3 = min(m3_val / 1000.0, 1.0) * 10
@@ -53,12 +56,15 @@ class FortniteIntegration(GameIntegration):
             insights.append("Combat: Focus on positioning and survival to increase K/D.")
         if m2_val > 10.0: 
             insights.append("Strategy: Excellent win rate. Strong late-game execution.")
-        return norm_m1, norm_m2, norm_m3, insights
+        return {"norms": [norm_m1, norm_m2, norm_m3], "insights": insights}
 
-    def get_future_predictions(self, future_m1, future_m2, future_m3):
-        kd = (future_m1 / 10.0) * 5.0
-        win_rate = (future_m2 / 10.0) * 20.0
-        wins = (future_m3 / 10.0) * 1000.0
+    def get_future_predictions(self, prediction, stats_data):
+        current_m1 = float(stats_data.get('m1', 0))
+        current_m2 = float(stats_data.get('m2', 0))
+        current_m3 = float(stats_data.get('m3', 0))
+        kd = current_m1 + ((prediction.get('future_m1', 0) / 10.0) * 5.0)
+        win_rate = current_m2 + ((prediction.get('future_m2', 0) / 10.0) * 20.0)
+        wins = current_m3 + ((prediction.get('future_m3', 0) / 10.0) * 1000.0)
         return [
             {"label": "Projected Future K/D", "value": round(kd, 2)},
             {"label": "Projected Future Win Rate", "value": f"{round(win_rate, 1)}%"},
@@ -96,7 +102,10 @@ class ClashIntegration(GameIntegration):
         except Exception as e:
             return None, str(e)
 
-    def get_insights(self, m1_val, m2_val, m3_val):
+    def get_insights(self, stats_data):
+        m1_val = float(stats_data.get('m1', 0))
+        m2_val = float(stats_data.get('m2', 0))
+        m3_val = float(stats_data.get('m3', 0))
         norm_m1 = min(m1_val / 16.0, 1.0) * 10
         norm_m2 = min(m2_val / 5000.0, 1.0) * 10
         norm_m3 = min(m3_val / 2000.0, 1.0) * 10
@@ -107,12 +116,15 @@ class ClashIntegration(GameIntegration):
             insights.append("Progression: Focus on maxing resource collectors before upgrading Town Hall.")
         if m3_val > 500: 
             insights.append("Clan Wars: Veteran war attacker with high star count.")
-        return norm_m1, norm_m2, norm_m3, insights
+        return {"norms": [norm_m1, norm_m2, norm_m3], "insights": insights}
 
-    def get_future_predictions(self, future_m1, future_m2, future_m3):
-        th = (future_m1 / 10.0) * 16.0
-        trophies = (future_m2 / 10.0) * 5000.0
-        stars = (future_m3 / 10.0) * 2000.0
+    def get_future_predictions(self, prediction, stats_data):
+        current_m1 = float(stats_data.get('m1', 0))
+        current_m2 = float(stats_data.get('m2', 0))
+        current_m3 = float(stats_data.get('m3', 0))
+        th = current_m1 + ((prediction.get('future_m1', 0) / 10.0) * 16.0)
+        trophies = current_m2 + ((prediction.get('future_m2', 0) / 10.0) * 5000.0)
+        stars = current_m3 + ((prediction.get('future_m3', 0) / 10.0) * 2000.0)
         return [
             {"label": "Projected Town Hall", "value": int(th)},
             {"label": "Projected Trophies", "value": int(trophies)},
@@ -158,19 +170,19 @@ class SteamIntegration(GameIntegration):
         except Exception as e:
             return None, str(e)
 
-    def get_insights(self, m1_val, m2_val, m3_val):
+    def get_insights(self, stats_data):
+        m1_val = float(stats_data.get('m1', 0))
         norm_m1 = min(m1_val / 100.0, 1.0) * 10
-        norm_m2 = min(m2_val / 4.0, 1.0) * 10
-        norm_m3 = min(m3_val / 2000.0, 1.0) * 10
         insights = []
         if m1_val > 50: 
             insights.append("Engagement: High Steam level. Active community participant.")
         else: 
             insights.append("Engagement: Craft badges during seasonal sales to efficiently level up.")
-        return norm_m1, norm_m2, norm_m3, insights
+        return {"norms": [norm_m1, 0, 0], "insights": insights}
 
-    def get_future_predictions(self, future_m1, future_m2, future_m3):
-        level = (future_m1 / 10.0) * 100.0
+    def get_future_predictions(self, prediction, stats_data):
+        current_m1 = float(stats_data.get('m1', 0))
+        level = current_m1 + ((prediction.get('future_m1', 0) / 10.0) * 100.0)
         return [
             {"label": "Projected Steam Level", "value": int(level)}
         ]
@@ -187,7 +199,6 @@ class HypixelIntegration(GameIntegration):
                 return None, "Minecraft Account Not Found"
             uuid = r_uuid.json().get("id")
             
-            # Switch to fetching deep Skyblock profile data to match AI training
             url_stats = f"https://api.hypixel.net/v2/skyblock/profiles?uuid={uuid}"
             headers = {"API-Key": api_key}
             r_stats = requests.get(url_stats, headers=headers, timeout=10)
@@ -197,7 +208,6 @@ class HypixelIntegration(GameIntegration):
             if not profiles:
                 return None, "Player has no Skyblock data."
                 
-            # Find their currently active profile
             profile = next((p for p in profiles if p.get("selected")), profiles[0])
             clean_uuid = uuid.replace("-", "")
             member = profile.get("members", {}).get(clean_uuid, {})
@@ -205,52 +215,114 @@ class HypixelIntegration(GameIntegration):
             if not member:
                 return None, "No member data found in profile."
                 
-            # Extract the exact metrics the AI trained on
+            player_data = member.get("player_data", {})
+            exp_data = player_data.get("experience", {})
+            
             sb_xp = member.get("leveling", {}).get("experience", 0)
-            combat_xp = member.get("player_data", {}).get("experience", {}).get("SKILL_COMBAT", 0)
+            combat_xp = exp_data.get("SKILL_COMBAT", 0)
+            mining_xp = exp_data.get("SKILL_MINING", 0)
+            farming_xp = exp_data.get("SKILL_FARMING", 0)
+            foraging_xp = exp_data.get("SKILL_FORAGING", 0)
+            fishing_xp = exp_data.get("SKILL_FISHING", 0)
+            cata_xp = member.get("dungeons", {}).get("dungeon_types", {}).get("catacombs", {}).get("experience", 0)
+            
             purse = member.get("coin_purse", 0)
-            bank = profile.get("banking", {}).get("balance", 0)
+            bank = profile.get("banking", {}).get("balance", 0.0)
+            # 1. Safely extract purse (checks new 'currencies' object, falls back to old)
+            currencies = member.get("currencies", {})
+            purse = currencies.get("coin_purse") if currencies.get("coin_purse") is not None else member.get("coin_purse", 0.0)
+            
+            # 2. Extract Co-op Bank
+            coop_bank = profile.get("banking", {}).get("balance", 0.0)
+            if coop_bank is None: coop_bank = 0.0
+            
+            # 3. Extract Personal Bank (Check new currencies object first, then old)
+            personal_bank = currencies.get("bank")
+            if personal_bank is None:
+                personal_bank = member.get("profile", {}).get("personal_bank_account", 0.0)
+            if personal_bank is None: personal_bank = 0.0
+            
+            bank = float(coop_bank) + float(personal_bank)
             total_wealth = purse + bank
             
-            sb_level = sb_xp / 100  # Rough estimation for display
+            sb_level = sb_xp / 100
             
             return {
                 "main_stat": f"Skyblock Level {math.floor(sb_level)}",
-                "detail_label": "Net Worth",
-                "detail_value": f"{int(total_wealth):,}",
+                "detail_label": "Combat XP",
+                "detail_value": f"{int(combat_xp):,}",
                 "m1": float(sb_xp),
                 "m2": float(combat_xp),
                 "m3": float(total_wealth),
+                "m4": float(mining_xp),
+                "m5": float(farming_xp),
+                "m6": float(foraging_xp),
+                "m7": float(fishing_xp),
+                "m8": float(cata_xp),
                 "raw_stats": [
                     {"key": "Skyblock XP", "value": f"{int(sb_xp):,}"},
                     {"key": "Combat XP", "value": f"{int(combat_xp):,}"},
-                    {"key": "Bank Balance", "value": f"{int(bank):,}"}
+                    {"key": "Mining XP", "value": f"{int(mining_xp):,}"},
+                    {"key": "Farming XP", "value": f"{int(farming_xp):,}"},
+                    {"key": "Foraging XP", "value": f"{int(foraging_xp):,}"},
+                    {"key": "Fishing XP", "value": f"{int(fishing_xp):,}"},
+                    {"key": "Catacombs XP", "value": f"{int(cata_xp):,}"}
                 ]
             }, None
         except Exception as e:
             return None, str(e)
 
-    def get_insights(self, m1_val, m2_val, m3_val):
-        norm_m1 = min(m1_val / 500000.0, 1.0) * 10
-        norm_m2 = min(m2_val / 50000000.0, 1.0) * 10
-        norm_m3 = min(m3_val / 1000000000.0, 1.0) * 10
+    def get_insights(self, stats_data):
+        m1_val = float(stats_data.get('m1', 0))
+        m2_val = float(stats_data.get('m2', 0))
+        m3_val = float(stats_data.get('m3', 0))
+        m4_val = float(stats_data.get('m4', 0))
+        m5_val = float(stats_data.get('m5', 0))
+        m6_val = float(stats_data.get('m6', 0))
+        m7_val = float(stats_data.get('m7', 0))
+        m8_val = float(stats_data.get('m8', 0))
+        
+        norm_m1 = min(m1_val / 50000.0, 1.0) * 10
+        norm_m2 = min(m2_val / 100000000.0, 1.0) * 10
+        norm_m3 = min(m3_val / 5000000000.0, 1.0) * 10
+        norm_m4 = min(m4_val / 100000000.0, 1.0) * 10
+        norm_m5 = min(m5_val / 100000000.0, 1.0) * 10
+        norm_m6 = min(m6_val / 50000000.0, 1.0) * 10
+        norm_m7 = min(m7_val / 50000000.0, 1.0) * 10
+        norm_m8 = min(m8_val / 500000000.0, 1.0) * 10
+        
         insights = []
-        if m1_val > 100000: 
+        if m1_val > 20000: 
             insights.append("Progression: High Skyblock XP indicates strong mid-to-endgame status.")
         else: 
             insights.append("Progression: Focus on fairy souls and cheap accessories to gain early XP.")
-        if m3_val > 50000000: 
+        if m3_val > 500000000: 
             insights.append("Economy: Strong wealth generation. Consider investing in minion upgrades.")
-        return norm_m1, norm_m2, norm_m3, insights
+        return {"norms": [norm_m1, norm_m2, norm_m3, norm_m4, norm_m5, norm_m6, norm_m7, norm_m8], "insights": insights}
 
-    def get_future_predictions(self, future_m1, future_m2, future_m3):
-        sb_xp = (future_m1 / 10.0) * 500000.0
-        combat_xp = (future_m2 / 10.0) * 50000000.0
-        wealth = (future_m3 / 10.0) * 1000000000.0
+    def get_future_predictions(self, prediction, stats_data):
+        c_m1, c_m2, c_m3 = float(stats_data.get('m1', 0)), float(stats_data.get('m2', 0)), float(stats_data.get('m3', 0))
+        c_m4, c_m5, c_m6 = float(stats_data.get('m4', 0)), float(stats_data.get('m5', 0)), float(stats_data.get('m6', 0))
+        c_m7, c_m8 = float(stats_data.get('m7', 0)), float(stats_data.get('m8', 0))
+        
+        sb_xp = c_m1 + ((prediction.get('future_m1', 0) / 10.0) * 50000.0)
+        combat_xp = c_m2 + ((prediction.get('future_m2', 0) / 10.0) * 100000000.0)
+        wealth = c_m3 + ((prediction.get('future_m3', 0) / 10.0) * 5000000000.0)
+        mining_xp = c_m4 + ((prediction.get('future_m4', 0) / 10.0) * 100000000.0)
+        farming_xp = c_m5 + ((prediction.get('future_m5', 0) / 10.0) * 100000000.0)
+        foraging_xp = c_m6 + ((prediction.get('future_m6', 0) / 10.0) * 50000000.0)
+        fishing_xp = c_m7 + ((prediction.get('future_m7', 0) / 10.0) * 50000000.0)
+        cata_xp = c_m8 + ((prediction.get('future_m8', 0) / 10.0) * 500000000.0)
+        
+        sb_level = sb_xp / 100
         return [
-            {"label": "7-Day Projected SB XP", "value": f"{int(sb_xp):,}"},
+            {"label": "7-Day Projected SB Level", "value": f"{int(sb_level)}"},
             {"label": "7-Day Projected Combat XP", "value": f"{int(combat_xp):,}"},
-            {"label": "7-Day Projected Wealth", "value": f"{int(wealth):,}"}
+            {"label": "7-Day Projected Mining XP", "value": f"{int(mining_xp):,}"},
+            {"label": "7-Day Projected Farming XP", "value": f"{int(farming_xp):,}"},
+            {"label": "7-Day Projected Foraging XP", "value": f"{int(foraging_xp):,}"},
+            {"label": "7-Day Projected Fishing XP", "value": f"{int(fishing_xp):,}"},
+            {"label": "7-Day Projected Cata XP", "value": f"{int(cata_xp):,}"}
         ]
 
 GAME_REGISTRY = {

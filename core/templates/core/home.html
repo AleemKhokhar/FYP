@@ -57,9 +57,9 @@
             </div>
     
             <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                {% for name in history %}
-                    <a href="/search/?game_choice=fortnite&username={{ name }}&platform=epic" class="history-pill">
-                       {{ name }}
+                {% for search in history %}
+                    <a href="/search/?game_choice={{ search.game_choice }}&username={{ search.username }}&platform={{ search.platform }}" class="history-pill">
+                       {{ search.username }} ({{ search.game_choice|title }})
                     </a>
                 {% endfor %}
             </div>

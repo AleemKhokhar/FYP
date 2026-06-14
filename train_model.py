@@ -1,15 +1,14 @@
 import os
 import django
-import torch
-import torch.nn as nn
-import torch.optim as optim
 import numpy as np
-import matplotlib.pyplot as plt
+import joblib
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'web_project.settings')
 django.setup()
 
-from core.ai_model import PerformanceModel
 from core.models import DailyStatSnapshot, TrackedPlayer
 
 def load_hypixel_data():
@@ -22,9 +21,14 @@ def load_hypixel_data():
     X_data, y_data = [], []
     
     print("Calculating metrics...")
-    max_sb_xp = max(all_snaps.values_list('skyblock_xp', flat=True)) or 1
-    max_combat = max(all_snaps.values_list('combat_xp', flat=True)) or 1
-    max_wealth = max(all_snaps.values_list('bank_balance', flat=True)) or 1
+    max_sb_xp = 50000.0
+    max_combat = 100000000.0
+    max_wealth = 5000000000.0
+    max_mining = 100000000.0
+    max_farming = 100000000.0
+    max_foraging = 50000000.0
+    max_fishing = 50000000.0
+    max_cata = 500000000.0
 
     print("Formatting player progression data...")
     all_snaps_list = list(all_snaps.order_by('player_id', 'date'))
@@ -47,59 +51,60 @@ def load_hypixel_data():
                 
             sb_gain = (last.skyblock_xp - first.skyblock_xp) / days_diff
             cb_gain = (last.combat_xp - first.combat_xp) / days_diff
-            wl_gain = (last.bank_balance - first.bank_balance) / days_diff
+            wl_gain = ((last.bank_balance + last.purse_balance) - (first.bank_balance + first.purse_balance)) / days_diff
+            mi_gain = (last.mining_xp - first.mining_xp) / days_diff
+            fa_gain = (last.farming_xp - first.farming_xp) / days_diff
+            fo_gain = (last.foraging_xp - first.foraging_xp) / days_diff
+            fi_gain = (last.fishing_xp - first.fishing_xp) / days_diff
+            ca_gain = (last.catacombs_xp - first.catacombs_xp) / days_diff
             
             x_m1 = min(last.skyblock_xp / max_sb_xp, 1.0)
             x_m2 = min(last.combat_xp / max_combat, 1.0)
-            x_m3 = min(last.bank_balance / max_wealth, 1.0)
+            x_m3 = min((last.bank_balance + last.purse_balance) / max_wealth, 1.0)
+            x_m4 = min(last.mining_xp / max_mining, 1.0)
+            x_m5 = min(last.farming_xp / max_farming, 1.0)
+            x_m6 = min(last.foraging_xp / max_foraging, 1.0)
+            x_m7 = min(last.fishing_xp / max_fishing, 1.0)
+            x_m8 = min(last.catacombs_xp / max_cata, 1.0)
             
-            y_m1 = min((last.skyblock_xp + (sb_gain * 7)) / max_sb_xp, 1.0)
-            y_m2 = min((last.combat_xp + (cb_gain * 7)) / max_combat, 1.0)
-            y_m3 = min((last.bank_balance + (wl_gain * 7)) / max_wealth, 1.0)
+            # Target (y) is now predicting the GAIN, not the absolute future value!
+            y_m1 = max(0.0, min((sb_gain * 7) / max_sb_xp, 1.0))
+            y_m2 = max(0.0, min((cb_gain * 7) / max_combat, 1.0))
+            y_m3 = max(0.0, min((wl_gain * 7) / max_wealth, 1.0))
+            y_m4 = max(0.0, min((mi_gain * 7) / max_mining, 1.0))
+            y_m5 = max(0.0, min((fa_gain * 7) / max_farming, 1.0))
+            y_m6 = max(0.0, min((fo_gain * 7) / max_foraging, 1.0))
+            y_m7 = max(0.0, min((fi_gain * 7) / max_fishing, 1.0))
+            y_m8 = max(0.0, min((ca_gain * 7) / max_cata, 1.0))
             
-            X_data.append([x_m1, x_m2, x_m3])
-            y_data.append([y_m1, y_m2, y_m3])
+            X_data.append([x_m1, x_m2, x_m3, x_m4, x_m5, x_m6, x_m7, x_m8])
+            y_data.append([y_m1, y_m2, y_m3, y_m4, y_m5, y_m6, y_m7, y_m8])
             
     if len(X_data) == 0:
         print("Not enough players with multiple days of data to train a forecaster.")
         return None, None
 
     print(f"Successfully loaded {len(X_data)} players for training!")
-    return torch.tensor(X_data, dtype=torch.float32), torch.tensor(y_data, dtype=torch.float32)
+    return np.array(X_data), np.array(y_data)
 
 def train():
     X, y = load_hypixel_data()
     if X is None:
         return
     
-    model = PerformanceModel()
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    print("Training K-Nearest Neighbors Forecaster...")
+    model = KNeighborsRegressor(n_neighbors=10, weights='distance')
     
-    epochs = 150
-    losses = []
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    for epoch in range(epochs):
-        optimizer.zero_grad()
-        outputs = model(X)
-        loss = criterion(outputs, y)
-        loss.backward()
-        optimizer.step()
-        
-        losses.append(loss.item())
-        if (epoch+1) % 10 == 0:
-            print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(losses, label='Training Loss')
-    plt.title('Model Training Progress (Loss Curve)')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.savefig('training_loss.png')
+    model.fit(X_train, y_train)
+    preds = model.predict(X_test)
+    mse = mean_squared_error(y_test, preds)
+    print(f"Evaluation complete! Realistic Test Mean Squared Error: {mse:.6f}")
     
-    torch.save(model.state_dict(), 'core/trained_model.pth')
-    print("Training complete. Graph saved as training_loss.png")
+    model.fit(X, y)
+    joblib.dump(model, 'core/trained_knn_model.joblib')
+    print("Model saved as core/trained_knn_model.joblib")
 
 if __name__ == "__main__":
     train()
