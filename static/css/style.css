@@ -76,7 +76,7 @@ body::before {
   text-shadow: 0 0 10px var(--accent-glow);
 }
 
-.hero-section, .dashboard-card, .auth-card {
+.hero-section, .hero-card, .dashboard-card, .auth-card {
   background: var(--glass) !important;
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
@@ -330,6 +330,40 @@ html, body {
 .player-main-name { font-weight: 800; font-size: 1.1rem; color: white; }
 .player-sub-name { font-size: 0.7rem; color: var(--text-dim); }
 .bottom-cta-card { background: var(--glass) !important; border: 1px solid var(--glass-bright) !important; border-radius: 32px; padding: 40px; margin-top: 60px; width: 100%; box-sizing: border-box; text-align: center; display: flex; flex-direction: column; align-items: center; }
+
+.results-container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+.header-container { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.username-wrapper { display: flex; align-items: center; }
+.results-title { margin: 0; font-size: clamp(2rem, 5vw, 3rem); }
+.game-badge { color: var(--accent); font-size: 1rem; border: 2px solid var(--accent); padding: 4px 12px; border-radius: 8px; vertical-align: middle; margin-left: 15px; font-weight: 800; }
+.results-error-card { border-color: #ff4444 !important; width: 100%; max-width: none; }
+.results-hero-card { width: 100%; max-width: none !important; margin-top: 0; margin-bottom: 40px; text-align: center; padding: 40px; }
+.main-stats-wrapper { display: flex; justify-content: center; gap: clamp(20px, 8vw, 80px); flex-wrap: wrap; margin-bottom: 40px; }
+.stat-label-small { margin: 0; font-size: 0.7rem; letter-spacing: 2px; }
+.main-stat-value { font-size: clamp(2.5rem, 6vw, 3.5rem); font-weight: 900; color: white; }
+.detail-stat-value { font-size: clamp(2.5rem, 6vw, 3.5rem); font-weight: 900; color: var(--accent); }
+.ai-prediction-section { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px; }
+.ai-prediction-label { margin: 0; letter-spacing: 4px; }
+.ai-prediction-score { font-size: clamp(4rem, 15vw, 8rem); font-weight: 900; color: var(--accent); text-shadow: 0 0 40px var(--accent-glow); line-height: 1; margin: 15px 0; }
+.ai-prediction-desc { opacity: 0.7; font-size: 0.95rem; max-width: 550px; margin: 10px auto 0; }
+.tactical-analysis-card { width: 100%; max-width: none !important; margin-bottom: 40px; text-align: left; }
+.tactical-analysis-title { color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; font-weight: 800; }
+.insights-list { display: flex; flex-direction: column; gap: 15px; }
+.insight-row { display: flex; gap: 15px; background: rgba(255,255,255,0.04); padding: 20px; border-radius: 15px; border-left: 5px solid var(--accent); }
+.insight-system-tag { color: var(--accent); font-weight: 900; font-size: 0.8rem; min-width: 80px; }
+.insight-text { font-size: 1rem; line-height: 1.6; color: rgba(255,255,255,0.95); }
+.no-insights-text { color: var(--text-dim); font-style: italic; }
+.raw-stat-label { margin: 0; font-size: 0.6rem; opacity: 0.6; letter-spacing: 1.5px; }
+.forecast-container { padding: 30px; border-radius: 24px; }
+.forecast-title { color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; font-weight: 800; margin-top: 0; }
+.forecast-grid { margin-top: 0; }
+.forecast-card { min-height: 120px; background: rgba(15, 15, 15, 0.9); }
+.forecast-label { color: var(--text-dim); text-transform: uppercase; font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 10px; margin-top: 0; }
+.forecast-value { color: white; font-size: 1.4rem; text-shadow: 0 0 10px rgba(255,255,255,0.2); margin: 0; }
+.link-account-form { margin-top: 60px; width: 100%; text-align: center; }
+.login-prompt-card { margin-top: 60px; padding: 25px; width: 100%; max-width: none !important; text-align: center; }
+.login-prompt-text { margin: 0; font-weight: 700; }
+.login-prompt-link { color: var(--accent); text-decoration: none; border-bottom: 2px solid var(--accent); }
 
 @media (max-width: 768px) {
   .navbar {

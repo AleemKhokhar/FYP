@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{% url 'home' %}" class="logo">Gamer<span>Tracker</span></a>
+        </div>
+    </nav>
+    <div class="hero-section" style="margin-top: 10vh;">
+        <h1 style="font-size: clamp(4rem, 10vw, 6rem); color: var(--accent); margin: 0; text-shadow: 0 0 30px var(--accent-glow);">404</h1>
+        <h2 style="letter-spacing: 4px; margin-top: 0;">SIGNAL LOST</h2>
+        <p style="color: var(--text-dim); margin-bottom: 40px;">The player data or page you are looking for has vanished from the server.</p>
+        <a href="{% url 'home' %}" class="btn-primary" style="display: inline-block !important; width: auto !important;">Return to Base</a>
+    </div>
+</body>
+</html>

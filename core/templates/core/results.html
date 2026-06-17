@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ username }} - {{ game_choice|title }} Stats</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.3">
 </head>
 <body>
     <nav class="navbar">
@@ -24,54 +24,54 @@
         </div>
     </nav>
 
-    <div class="container" style="max-width: 1100px; margin: 0 auto; padding: 40px 20px;">
-        <div class="header-container" style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-            <div style="display: flex; align-items: center;">
-                <h1 style="margin: 0; font-size: clamp(2rem, 5vw, 3rem);">
+    <div class="results-container">
+        <div class="header-container">
+            <div class="username-wrapper">
+                <h1 class="results-title">
                     {{ username }}
-                    <span style="color: var(--accent); font-size: 1rem; border: 2px solid var(--accent); padding: 4px 12px; border-radius: 8px; vertical-align: middle; margin-left: 15px; font-weight: 800;">{{ game_choice|upper }}</span>
+                    <span class="game-badge">{{ game_choice|upper }}</span>
                 </h1>
             </div>
             <a href="{% url 'home' %}" class="new-search-btn">← New Search</a>
         </div>
 
         {% if error %}
-        <div class="hero-card" style="border-color: #ff4444 !important; width: 100%;">
+        <div class="hero-card results-error-card">
             <h2 style="color: #ff4444;">Error</h2>
             <p>{{ error }}</p>
         </div>
         {% elif stats %}
-        <div class="hero-card" style="width: 100%; margin-top: 0; margin-bottom: 40px; text-align: center; padding: 40px;">
-            <div style="display: flex; justify-content: center; gap: clamp(20px, 8vw, 80px); flex-wrap: wrap; margin-bottom: 40px;">
+        <div class="hero-card results-hero-card">
+            <div class="main-stats-wrapper">
                 <div>
-                    <p class="recent-label" style="margin: 0; font-size: 0.7rem; letter-spacing: 2px;">{% if game_choice == 'fortnite' %}TOTAL TIME PLAYED{% elif game_choice == 'clash' %}VILLAGE STATUS{% else %}PRIMARY METRIC{% endif %}</p>
-                    <div id="stat-main_stat" aria-live="polite" style="font-size: clamp(2.5rem, 6vw, 3.5rem); font-weight: 900; color: white;">{{ stats.main_stat }}</div>
+                    <p class="recent-label stat-label-small">{% if game_choice == 'fortnite' %}TOTAL TIME PLAYED{% elif game_choice == 'clash' %}VILLAGE STATUS{% else %}PRIMARY METRIC{% endif %}</p>
+                    <div id="stat-main_stat" aria-live="polite" class="main-stat-value">{{ stats.main_stat }}</div>
                 </div>
                 <div>
-                    <p class="recent-label" style="margin: 0; font-size: 0.7rem; letter-spacing: 2px;">{{ stats.detail_label }}</p>
-                    <div id="stat-detail_value" aria-live="polite" style="font-size: clamp(2.5rem, 6vw, 3.5rem); font-weight: 900; color: var(--accent);">{{ stats.detail_value }}</div>
+                    <p class="recent-label stat-label-small">{{ stats.detail_label }}</p>
+                    <div id="stat-detail_value" aria-live="polite" class="detail-stat-value">{{ stats.detail_value }}</div>
                 </div>
             </div>
 
-            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 30px;">
-                <p class="recent-label" style="margin: 0; letter-spacing: 4px;">AI Performance Prediction</p>
-                <div id="ai-prediction-value" aria-live="polite" style="font-size: clamp(4rem, 15vw, 8rem); font-weight: 900; color: var(--accent); text-shadow: 0 0 40px var(--accent-glow); line-height: 1; margin: 15px 0;">
-                    {{ stats.ai_score }}%
+            <div class="ai-prediction-section">
+                <p class="recent-label ai-prediction-label">Score Summary</p>
+                <div id="ai-prediction-value" aria-live="polite" class="ai-prediction-score">
+                    {{ stats.ai_score }}
                 </div>
-                <p style="opacity: 0.7; font-size: 0.95rem; max-width: 550px; margin: 10px auto 0;">Neural Network analysis based on real-time combat data and historical performance metrics.</p>
+                <p class="ai-prediction-desc">Overall average progression across all tracked skill levels and metrics.</p>
             </div>
         </div>
 
-        <div class="dashboard-card" style="width: 100%; margin-bottom: 40px; text-align: left;">
-            <h3 style="color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; font-weight: 800;">AI Tactical Analysis</h3>
-            <div style="display: flex; flex-direction: column; gap: 15px;">
+        <div class="dashboard-card tactical-analysis-card">
+            <h3 class="tactical-analysis-title">AI Tactical Analysis</h3>
+            <div class="insights-list">
                 {% for insight in stats.insights %}
-                <div class="insight-row" style="display: flex; gap: 15px; background: rgba(255,255,255,0.04); padding: 20px; border-radius: 15px; border-left: 5px solid var(--accent);">
-                    <span style="color: var(--accent); font-weight: 900; font-size: 0.8rem; min-width: 80px;">[SYSTEM]</span>
-                    <span style="font-size: 1rem; line-height: 1.6; color: rgba(255,255,255,0.95);">{{ insight }}</span>
+                <div class="insight-row">
+                    <span class="insight-system-tag">[GEMINI]</span>
+                    <span class="insight-text">{{ insight }}</span>
                 </div>
                 {% empty %}
-                <p style="color: var(--text-dim); font-style: italic;">Tactical data unavailable for this profile.</p>
+                <p class="no-insights-text">Tactical data unavailable for this profile.</p>
                 {% endfor %}
             </div>
         </div>
@@ -79,22 +79,22 @@
         <div class="stats-grid">
             {% for stat in stats.raw_stats %}
             <div class="stat-card">
-                <span class="recent-label" style="margin: 0; font-size: 0.6rem; opacity: 0.6; letter-spacing: 1.5px;">{{ stat.key }}</span>
+                <span class="recent-label raw-stat-label">{{ stat.key }}</span>
                 <span class="stat-value" id="stat-{{ stat.key }}" aria-live="polite">{{ stat.value }}</span>
             </div>
             {% endfor %}
         </div>
 
         {% if stats.future_predictions %}
-        <div class="tactical-card" style="margin-top: 40px; padding: 30px; border-radius: 24px; background: rgba(0, 255, 136, 0.05); border: 1px solid var(--accent); text-align: center;">
-            <h3 style="color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 25px; font-weight: 800; margin-top: 0;">AI 7-Day Trajectory Forecast</h3>
-            <div class="stats-grid" style="margin-top: 0;">
+        <div class="tactical-card forecast-container">
+            <h3 class="forecast-title">AI 7-Day Trajectory Forecast</h3>
+            <div class="stats-grid forecast-grid">
                 {% for pred in stats.future_predictions %}
-                <div class="stat-card" style="min-height: 120px; background: rgba(15, 15, 15, 0.9);">
-                    <p class="dash-card-label" style="color: var(--text-dim); text-transform: uppercase; font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 10px;">
+                <div class="stat-card forecast-card">
+                    <p class="forecast-label">
                         {{ pred.label }}
                     </p>
-                    <p class="stat-value" style="color: white; font-size: 1.4rem; text-shadow: 0 0 10px rgba(255,255,255,0.2); margin: 0;">
+                    <p class="stat-value forecast-value">
                         {{ pred.value }}
                     </p>
                 </div>
@@ -104,7 +104,7 @@
         {% endif %}
 
         {% if user.is_authenticated %}
-        <form action="{% url 'link_account' %}" method="POST" style="margin-top: 60px; width: 100%; text-align: center;">
+        <form action="{% url 'link_account' %}" method="POST" class="link-account-form">
             {% csrf_token %}
             <input type="hidden" name="game_username" value="{{ username }}" />
             <input type="hidden" name="game_choice" value="{{ game_choice }}" />
@@ -118,9 +118,9 @@
             </button>
         </form>
         {% else %}
-        <div class="hero-card" style="margin-top: 60px; padding: 25px; width: 100%; text-align: center;">
-            <p style="margin: 0; font-weight: 700;">
-                <a href="{% url 'login' %}" style="color: var(--accent); text-decoration: none; border-bottom: 2px solid var(--accent);">LOG IN</a> TO SAVE THIS ACCOUNT
+        <div class="hero-card login-prompt-card">
+            <p class="login-prompt-text">
+                <a href="{% url 'login' %}" class="login-prompt-link">LOG IN</a> TO SAVE THIS ACCOUNT
             </p>
         </div>
         {% endif %}
@@ -145,7 +145,7 @@
             const data = JSON.parse(e.data);
             if (data.stats.ai_score) {
                 const aiElem = document.getElementById("ai-prediction-value");
-                if (aiElem) aiElem.innerText = data.stats.ai_score + "%";
+                if (aiElem) aiElem.innerText = data.stats.ai_score;
             }
             for (const [key, value] of Object.entries(data.stats)) {
                 const element = document.getElementById(`stat-${key}`);
@@ -155,13 +155,12 @@
 
         statSocket.onclose = function (e) { console.error("Socket closed unexpectedly"); };
 
-        // Check for updates in the background every 60 seconds
         setInterval(() => {
             const gameChoice = "{{ game_choice|escapejs }}";
             const platform = "{{ platform|escapejs }}";
             fetch(`/api-refresh/?game_choice=${gameChoice}&username=${encodeURIComponent(username)}&platform=${platform}`)
                 .catch(err => console.error("Auto-refresh failed:", err));
-        }, 60000); // 60000ms = 60 seconds
+        }, 60000);
     </script>
 </body>
 </html>

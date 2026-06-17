@@ -42,6 +42,7 @@
                         <option value="fortnite" {% if game_choice == 'fortnite' %}selected{% endif %}>Fortnite</option>
                         <option value="clash" {% if game_choice == 'clash' %}selected{% endif %}>Clash of Clans</option>
                         <option value="steam" {% if game_choice == 'steam' %}selected{% endif %}>Steam</option>
+                        <option value="hypixel" {% if game_choice == 'hypixel' %}selected{% endif %}>Hypixel (MC)</option>
                     </select>
                     <button type="submit" class="btn-primary compare-btn">Analyze Matchup</button>
                 </div>
@@ -55,19 +56,25 @@
         {% endif %}
 
         {% if data1 and data2 %}
+        <div class="hero-card tactical-card" style="margin-bottom: 30px;">
+            <h3 class="tactical-title">MATCH SIMILARITY</h3>
+            <div class="player-score" style="font-size: 3.5rem;">{{ similarity }}%</div>
+            <p class="recent-label">Euclidean Distance Analysis</p>
+        </div>
+
         <div class="comparison-cards">
             <div class="player-vs-card {% if data1.ai_score > data2.ai_score %}winner{% endif %}">
                 {% if data1.ai_score > data2.ai_score %}<div class="winner-label">Higher Rated</div>{% endif %}
                 <h2 class="player-name">{{ user1 }}</h2>
-                <div class="player-score">{{ data1.ai_score }}%</div>
-                <p class="recent-label">AI Efficiency Rating</p>
+                <div class="player-score">{{ data1.ai_score }}</div>
+                <p class="recent-label">Score Summary</p>
             </div>
 
             <div class="player-vs-card {% if data2.ai_score > data1.ai_score %}winner{% endif %}">
                 {% if data2.ai_score > data1.ai_score %}<div class="winner-label">Higher Rated</div>{% endif %}
                 <h2 class="player-name">{{ user2 }}</h2>
-                <div class="player-score">{{ data2.ai_score }}%</div>
-                <p class="recent-label">AI Efficiency Rating</p>
+                <div class="player-score">{{ data2.ai_score }}</div>
+                <p class="recent-label">Score Summary</p>
             </div>
         </div>
 

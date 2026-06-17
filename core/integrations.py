@@ -1,7 +1,25 @@
 import os
 import requests
 import math
+import hashlib
+import numpy as np
 from datetime import datetime
+import concurrent.futures
+from django.core.cache import cache
+
+def get_euclidean_similarity(v1, v2):
+    v1 = np.array(v1, dtype=float)
+    v2 = np.array(v2, dtype=float)
+    max_len = max(len(v1), len(v2), 1)
+    if max_len > 12:
+        max_len = 12
+    v1 = v1[:12]
+    v2 = v2[:12]
+    v1 = np.pad(v1, (0, max_len - len(v1)))
+    v2 = np.pad(v2, (0, max_len - len(v2)))
+    dist = np.linalg.norm(v1 - v2)
+    sim = 1.0 / (1.0 + dist)
+    return round(sim * 100, 1)
 
 class GameIntegration:
     def fetch_stats(self, username, platform=None):
@@ -13,6 +31,66 @@ class GameIntegration:
     def get_future_predictions(self, prediction, stats_data):
         return []
 
+    def normalize_metrics(self, stats_data, max_values):
+        norms = []
+        for i, max_val in enumerate(max_values):
+            val = float(stats_data.get(f'm{i+1}', 0))
+            norms.append(min(val / max_val, 1.0) * 10 if max_val else 0)
+        return norms
+        
+    def calculate_future(self, stats_data, prediction, max_values):
+        futures = []
+        for i, max_val in enumerate(max_values):
+            current = float(stats_data.get(f'm{i+1}', 0))
+            diff = (prediction.get(f'future_m{i+1}', 0) / 10.0) * max_val
+            futures.append(current + diff)
+        return futures
+
+    def get_comparison_vector(self, stats_data):
+        return []
+
+    def get_comparison_display(self, stats_data):
+        return stats_data.get('raw_stats', [])
+
+    def generate_llm_insights(self, game_name, stats_data):
+        stats_str = ", ".join([f"{s['key']}: {s['value']}" for s in stats_data.get('raw_stats', [])])
+        stats_hash = hashlib.md5(stats_str.encode()).hexdigest()
+        cache_key = f"llm_insight_{stats_hash}"
+        
+        cached_insights = cache.get(cache_key)
+        if cached_insights:
+            return cached_insights
+            
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return ["GEMINI_API_KEY not configured in .env file."]
+            
+        try:
+            prompt = f"You are an aggressive, hyper-competitive esports coach. Analyze these {game_name} player stats: {stats_str}. Provide exactly 2 distinct, brutally honest tactical insights or tips (max 1 sentence each) to make the player better. Format them as plain text lines separated by a newline, with no bullet points, no markdown, and no asterisks."
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
+            headers = {'Content-Type': 'application/json'}
+            data = {"contents": [{"parts": [{"text": prompt}]}]}
+            
+            response = requests.post(url, headers=headers, json=data, timeout=10)
+            if response.status_code != 200:
+                print(f"Gemini HTTP Error: {response.text}")
+                if response.status_code == 429:
+                    return ["AI Rate Limit Reached.", "Please wait about 30 seconds before analyzing another profile."]
+                try:
+                    error_details = response.json().get("error", {}).get("message", "Unknown error")
+                except:
+                    error_details = "Invalid API Key or Server Error"
+                return [f"API Error {response.status_code}:", error_details]
+                
+            resp_json = response.json()
+            text_output = resp_json.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+            
+            insights = [line.strip('- *') for line in text_output.strip().split('\n') if line.strip()][:2]
+            cache.set(cache_key, insights, 3600)
+            return insights
+        except Exception as e:
+            print(f"Gemini API Error: {e}")
+            return ["Tactical AI analysis currently offline due to server load."]
 
 class FortniteIntegration(GameIntegration):
     def fetch_stats(self, username, platform=None):
@@ -43,32 +121,27 @@ class FortniteIntegration(GameIntegration):
             return None, str(e)
 
     def get_insights(self, stats_data):
-        m1_val = float(stats_data.get('m1', 0))
-        m2_val = float(stats_data.get('m2', 0))
-        m3_val = float(stats_data.get('m3', 0))
-        norm_m1 = min(m1_val / 5.0, 1.0) * 10
-        norm_m2 = min(m2_val / 20.0, 1.0) * 10
-        norm_m3 = min(m3_val / 1000.0, 1.0) * 10
-        insights = []
-        if m1_val > 2.0: 
-            insights.append("Combat: K/D ratio suggests high mechanical skill.")
-        else: 
-            insights.append("Combat: Focus on positioning and survival to increase K/D.")
-        if m2_val > 10.0: 
-            insights.append("Strategy: Excellent win rate. Strong late-game execution.")
-        return {"norms": [norm_m1, norm_m2, norm_m3], "insights": insights}
+        norms = self.normalize_metrics(stats_data, [5.0, 20.0, 1000.0])
+        insights = self.generate_llm_insights("Fortnite", stats_data)
+        return {"norms": norms, "insights": insights}
+
+    def get_comparison_vector(self, stats_data):
+        norms = self.normalize_metrics(stats_data, [5.0, 20.0, 1000.0])
+        return [n / 10.0 for n in norms]
+
+    def get_comparison_display(self, stats_data):
+        return [
+            {"key": "K/D Ratio", "value": f"{float(stats_data.get('m1', 0)):.2f}"},
+            {"key": "Win Rate", "value": f"{float(stats_data.get('m2', 0)):.1f}%"},
+            {"key": "Total Wins", "value": f"{int(stats_data.get('m3', 0)):,}"}
+        ]
 
     def get_future_predictions(self, prediction, stats_data):
-        current_m1 = float(stats_data.get('m1', 0))
-        current_m2 = float(stats_data.get('m2', 0))
-        current_m3 = float(stats_data.get('m3', 0))
-        kd = current_m1 + ((prediction.get('future_m1', 0) / 10.0) * 5.0)
-        win_rate = current_m2 + ((prediction.get('future_m2', 0) / 10.0) * 20.0)
-        wins = current_m3 + ((prediction.get('future_m3', 0) / 10.0) * 1000.0)
+        f = self.calculate_future(stats_data, prediction, [5.0, 20.0, 1000.0])
         return [
-            {"label": "Projected Future K/D", "value": round(kd, 2)},
-            {"label": "Projected Future Win Rate", "value": f"{round(win_rate, 1)}%"},
-            {"label": "Projected Future Wins", "value": int(wins)}
+            {"label": "Projected Future K/D", "value": round(f[0], 2)},
+            {"label": "Projected Future Win Rate", "value": f"{round(f[1], 1)}%"},
+            {"label": "Projected Future Wins", "value": int(f[2])}
         ]
 
 class ClashIntegration(GameIntegration):
@@ -103,32 +176,27 @@ class ClashIntegration(GameIntegration):
             return None, str(e)
 
     def get_insights(self, stats_data):
-        m1_val = float(stats_data.get('m1', 0))
-        m2_val = float(stats_data.get('m2', 0))
-        m3_val = float(stats_data.get('m3', 0))
-        norm_m1 = min(m1_val / 16.0, 1.0) * 10
-        norm_m2 = min(m2_val / 5000.0, 1.0) * 10
-        norm_m3 = min(m3_val / 2000.0, 1.0) * 10
-        insights = []
-        if m1_val >= 11: 
-            insights.append("Progression: High Town Hall level. Prioritize hero upgrades.")
-        else: 
-            insights.append("Progression: Focus on maxing resource collectors before upgrading Town Hall.")
-        if m3_val > 500: 
-            insights.append("Clan Wars: Veteran war attacker with high star count.")
-        return {"norms": [norm_m1, norm_m2, norm_m3], "insights": insights}
+        norms = self.normalize_metrics(stats_data, [16.0, 5000.0, 2000.0])
+        insights = self.generate_llm_insights("Clash of Clans", stats_data)
+        return {"norms": norms, "insights": insights}
+
+    def get_comparison_vector(self, stats_data):
+        norms = self.normalize_metrics(stats_data, [16.0, 5000.0, 2000.0])
+        return [n / 10.0 for n in norms]
+
+    def get_comparison_display(self, stats_data):
+        return [
+            {"key": "Town Hall", "value": f"{int(stats_data.get('m1', 0))}"},
+            {"key": "Trophies", "value": f"{int(stats_data.get('m2', 0)):,}"},
+            {"key": "War Stars", "value": f"{int(stats_data.get('m3', 0)):,}"}
+        ]
 
     def get_future_predictions(self, prediction, stats_data):
-        current_m1 = float(stats_data.get('m1', 0))
-        current_m2 = float(stats_data.get('m2', 0))
-        current_m3 = float(stats_data.get('m3', 0))
-        th = current_m1 + ((prediction.get('future_m1', 0) / 10.0) * 16.0)
-        trophies = current_m2 + ((prediction.get('future_m2', 0) / 10.0) * 5000.0)
-        stars = current_m3 + ((prediction.get('future_m3', 0) / 10.0) * 2000.0)
+        f = self.calculate_future(stats_data, prediction, [16.0, 5000.0, 2000.0])
         return [
-            {"label": "Projected Town Hall", "value": int(th)},
-            {"label": "Projected Trophies", "value": int(trophies)},
-            {"label": "Projected War Stars", "value": int(stars)}
+            {"label": "Projected Town Hall", "value": int(f[0])},
+            {"label": "Projected Trophies", "value": int(f[1])},
+            {"label": "Projected War Stars", "value": int(f[2])}
         ]
 
 class SteamIntegration(GameIntegration):
@@ -146,8 +214,13 @@ class SteamIntegration(GameIntegration):
         try:
             url_summary = f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key={api_key}&steamids={steam_id}"
             url_level = f"https://api.steampowered.com/IPlayerService/GetSteamLevel/v1/?key={api_key}&steamid={steam_id}"
-            r_summary = requests.get(url_summary, timeout=10)
-            r_level = requests.get(url_level, timeout=10)
+            
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                f_summary = executor.submit(requests.get, url_summary, timeout=10)
+                f_level = executor.submit(requests.get, url_level, timeout=10)
+                r_summary = f_summary.result()
+                r_level = f_level.result()
+                
             player = r_summary.json().get("response", {}).get("players", [{}])[0]
             level = r_level.json().get("response", {}).get("player_level", 0)
             state_map = {0: "Offline", 1: "Online", 2: "Busy", 3: "Away", 4: "Snooze"}
@@ -171,20 +244,23 @@ class SteamIntegration(GameIntegration):
             return None, str(e)
 
     def get_insights(self, stats_data):
-        m1_val = float(stats_data.get('m1', 0))
-        norm_m1 = min(m1_val / 100.0, 1.0) * 10
-        insights = []
-        if m1_val > 50: 
-            insights.append("Engagement: High Steam level. Active community participant.")
-        else: 
-            insights.append("Engagement: Craft badges during seasonal sales to efficiently level up.")
-        return {"norms": [norm_m1, 0, 0], "insights": insights}
+        norms = self.normalize_metrics(stats_data, [100.0, 0, 0])
+        insights = self.generate_llm_insights("Steam", stats_data)
+        return {"norms": norms, "insights": insights}
+
+    def get_comparison_vector(self, stats_data):
+        norms = self.normalize_metrics(stats_data, [100.0])
+        return [n / 10.0 for n in norms]
+
+    def get_comparison_display(self, stats_data):
+        return [
+            {"key": "Steam Level", "value": f"{int(stats_data.get('m1', 0))}"}
+        ]
 
     def get_future_predictions(self, prediction, stats_data):
-        current_m1 = float(stats_data.get('m1', 0))
-        level = current_m1 + ((prediction.get('future_m1', 0) / 10.0) * 100.0)
+        f = self.calculate_future(stats_data, prediction, [100.0, 0, 0])
         return [
-            {"label": "Projected Steam Level", "value": int(level)}
+            {"label": "Projected Steam Level", "value": int(f[0])}
         ]
 
 class HypixelIntegration(GameIntegration):
@@ -226,25 +302,6 @@ class HypixelIntegration(GameIntegration):
             fishing_xp = exp_data.get("SKILL_FISHING", 0)
             cata_xp = member.get("dungeons", {}).get("dungeon_types", {}).get("catacombs", {}).get("experience", 0)
             
-            purse = member.get("coin_purse", 0)
-            bank = profile.get("banking", {}).get("balance", 0.0)
-            # 1. Safely extract purse (checks new 'currencies' object, falls back to old)
-            currencies = member.get("currencies", {})
-            purse = currencies.get("coin_purse") if currencies.get("coin_purse") is not None else member.get("coin_purse", 0.0)
-            
-            # 2. Extract Co-op Bank
-            coop_bank = profile.get("banking", {}).get("balance", 0.0)
-            if coop_bank is None: coop_bank = 0.0
-            
-            # 3. Extract Personal Bank (Check new currencies object first, then old)
-            personal_bank = currencies.get("bank")
-            if personal_bank is None:
-                personal_bank = member.get("profile", {}).get("personal_bank_account", 0.0)
-            if personal_bank is None: personal_bank = 0.0
-            
-            bank = float(coop_bank) + float(personal_bank)
-            total_wealth = purse + bank
-            
             sb_level = sb_xp / 100
             
             return {
@@ -253,12 +310,12 @@ class HypixelIntegration(GameIntegration):
                 "detail_value": f"{int(combat_xp):,}",
                 "m1": float(sb_xp),
                 "m2": float(combat_xp),
-                "m3": float(total_wealth),
+                "m3": float(cata_xp),
                 "m4": float(mining_xp),
                 "m5": float(farming_xp),
                 "m6": float(foraging_xp),
                 "m7": float(fishing_xp),
-                "m8": float(cata_xp),
+                "m8": 0.0,
                 "raw_stats": [
                     {"key": "Skyblock XP", "value": f"{int(sb_xp):,}"},
                     {"key": "Combat XP", "value": f"{int(combat_xp):,}"},
@@ -273,56 +330,80 @@ class HypixelIntegration(GameIntegration):
             return None, str(e)
 
     def get_insights(self, stats_data):
-        m1_val = float(stats_data.get('m1', 0))
-        m2_val = float(stats_data.get('m2', 0))
-        m3_val = float(stats_data.get('m3', 0))
-        m4_val = float(stats_data.get('m4', 0))
-        m5_val = float(stats_data.get('m5', 0))
-        m6_val = float(stats_data.get('m6', 0))
-        m7_val = float(stats_data.get('m7', 0))
-        m8_val = float(stats_data.get('m8', 0))
-        
-        norm_m1 = min(m1_val / 50000.0, 1.0) * 10
-        norm_m2 = min(m2_val / 100000000.0, 1.0) * 10
-        norm_m3 = min(m3_val / 5000000000.0, 1.0) * 10
-        norm_m4 = min(m4_val / 100000000.0, 1.0) * 10
-        norm_m5 = min(m5_val / 100000000.0, 1.0) * 10
-        norm_m6 = min(m6_val / 50000000.0, 1.0) * 10
-        norm_m7 = min(m7_val / 50000000.0, 1.0) * 10
-        norm_m8 = min(m8_val / 500000000.0, 1.0) * 10
-        
-        insights = []
-        if m1_val > 20000: 
-            insights.append("Progression: High Skyblock XP indicates strong mid-to-endgame status.")
-        else: 
-            insights.append("Progression: Focus on fairy souls and cheap accessories to gain early XP.")
-        if m3_val > 500000000: 
-            insights.append("Economy: Strong wealth generation. Consider investing in minion upgrades.")
-        return {"norms": [norm_m1, norm_m2, norm_m3, norm_m4, norm_m5, norm_m6, norm_m7, norm_m8], "insights": insights}
+        max_vals = [50000.0, 111672425.0, 5698096400.0, 111672425.0, 111672425.0, 111672425.0, 111672425.0, 0.0]
+        norms = self.normalize_metrics(stats_data, max_vals)
+        insights = self.generate_llm_insights("Minecraft Hypixel Skyblock", stats_data)
+        return {"norms": norms, "insights": insights}
+
+    SKILL_XP = [
+        0, 50, 175, 375, 675, 1175, 1925, 2925, 4425, 6425,
+        9925, 14925, 22425, 32425, 47425, 67425, 97425, 147425, 222425, 322425,
+        522425, 822425, 1222425, 1722425, 2322425, 3022425, 3822425, 4722425, 5722425, 6822425,
+        8022425, 9322425, 10722425, 12222425, 13822425, 15522425, 17322425, 19222425, 21222425, 23322425,
+        25522425, 27822425, 30222425, 32722425, 35322425, 38072425, 40972425, 44072425, 47472425, 51172425,
+        55172425, 59472425, 64072425, 68972425, 74172425, 79672425, 85472425, 91572425, 97972425, 104672425,
+        111672425
+    ]
+
+    CATA_XP = [
+        0, 50, 125, 235, 395, 625, 955, 1425, 2095, 3045,
+        4385, 6275, 8940, 12700, 17960, 25340, 35640, 50040, 70040, 97640,
+        135640, 188140, 259640, 356640, 488640, 668640, 911640, 1239640, 1684640, 2284640,
+        3084640, 4149640, 5559640, 7459640, 9959640, 13259640, 17559640, 23159640, 30359640, 39559640,
+        51559640, 66559640, 85559640, 109559640, 139559640, 177559640, 225559640, 285559640, 360559640, 453559640,
+        569809640
+    ]
+
+    def _get_level(self, xp, table):
+        if xp <= 0: return 0.0
+        if xp >= table[-1]: return float(len(table) - 1)
+        for i in range(1, len(table)):
+            if xp < table[i]:
+                return float(i - 1) + ((xp - table[i-1]) / (table[i] - table[i-1]))
+        return 0.0
+
+    def get_comparison_vector(self, stats_data):
+        sb_lvl = min(float(stats_data.get('m1', 0)) / 100.0, 600.0)
+        combat_lvl = min(self._get_level(float(stats_data.get('m2', 0)), self.SKILL_XP), 60.0)
+        cata_lvl = min(self._get_level(float(stats_data.get('m3', 0)), self.CATA_XP), 50.0)
+        mining_lvl = min(self._get_level(float(stats_data.get('m4', 0)), self.SKILL_XP), 60.0)
+        farming_lvl = min(self._get_level(float(stats_data.get('m5', 0)), self.SKILL_XP), 60.0)
+        foraging_lvl = min(self._get_level(float(stats_data.get('m6', 0)), self.SKILL_XP), 60.0)
+        fishing_lvl = min(self._get_level(float(stats_data.get('m7', 0)), self.SKILL_XP), 60.0)
+
+        return [sb_lvl / 600.0, combat_lvl / 60.0, mining_lvl / 60.0, farming_lvl / 60.0, foraging_lvl / 60.0, fishing_lvl / 60.0, cata_lvl / 50.0]
+
+    def get_comparison_display(self, stats_data):
+        sb_lvl = float(stats_data.get('m1', 0)) / 100.0
+        combat_lvl = self._get_level(float(stats_data.get('m2', 0)), self.SKILL_XP)
+        cata_lvl = min(self._get_level(float(stats_data.get('m3', 0)), self.CATA_XP), 50.0)
+        mining_lvl = self._get_level(float(stats_data.get('m4', 0)), self.SKILL_XP)
+        farming_lvl = self._get_level(float(stats_data.get('m5', 0)), self.SKILL_XP)
+        foraging_lvl = min(self._get_level(float(stats_data.get('m6', 0)), self.SKILL_XP), 60.0)
+        fishing_lvl = min(self._get_level(float(stats_data.get('m7', 0)), self.SKILL_XP), 60.0)
+
+        return [
+            {"key": "Skyblock Level", "value": f"{int(sb_lvl)}"},
+            {"key": "Combat Level", "value": f"{combat_lvl:.1f}"},
+            {"key": "Mining Level", "value": f"{mining_lvl:.1f}"},
+            {"key": "Farming Level", "value": f"{farming_lvl:.1f}"},
+            {"key": "Foraging Level", "value": f"{foraging_lvl:.1f}"},
+            {"key": "Fishing Level", "value": f"{fishing_lvl:.1f}"},
+            {"key": "Catacombs Level", "value": f"{cata_lvl:.1f}"}
+        ]
 
     def get_future_predictions(self, prediction, stats_data):
-        c_m1, c_m2, c_m3 = float(stats_data.get('m1', 0)), float(stats_data.get('m2', 0)), float(stats_data.get('m3', 0))
-        c_m4, c_m5, c_m6 = float(stats_data.get('m4', 0)), float(stats_data.get('m5', 0)), float(stats_data.get('m6', 0))
-        c_m7, c_m8 = float(stats_data.get('m7', 0)), float(stats_data.get('m8', 0))
-        
-        sb_xp = c_m1 + ((prediction.get('future_m1', 0) / 10.0) * 50000.0)
-        combat_xp = c_m2 + ((prediction.get('future_m2', 0) / 10.0) * 100000000.0)
-        wealth = c_m3 + ((prediction.get('future_m3', 0) / 10.0) * 5000000000.0)
-        mining_xp = c_m4 + ((prediction.get('future_m4', 0) / 10.0) * 100000000.0)
-        farming_xp = c_m5 + ((prediction.get('future_m5', 0) / 10.0) * 100000000.0)
-        foraging_xp = c_m6 + ((prediction.get('future_m6', 0) / 10.0) * 50000000.0)
-        fishing_xp = c_m7 + ((prediction.get('future_m7', 0) / 10.0) * 50000000.0)
-        cata_xp = c_m8 + ((prediction.get('future_m8', 0) / 10.0) * 500000000.0)
-        
-        sb_level = sb_xp / 100
+        max_vals = [50000.0, 111672425.0, 5698096400.0, 111672425.0, 111672425.0, 111672425.0, 111672425.0, 0.0]
+        f = self.calculate_future(stats_data, prediction, max_vals)
+        sb_level = f[0] / 100
         return [
             {"label": "7-Day Projected SB Level", "value": f"{int(sb_level)}"},
-            {"label": "7-Day Projected Combat XP", "value": f"{int(combat_xp):,}"},
-            {"label": "7-Day Projected Mining XP", "value": f"{int(mining_xp):,}"},
-            {"label": "7-Day Projected Farming XP", "value": f"{int(farming_xp):,}"},
-            {"label": "7-Day Projected Foraging XP", "value": f"{int(foraging_xp):,}"},
-            {"label": "7-Day Projected Fishing XP", "value": f"{int(fishing_xp):,}"},
-            {"label": "7-Day Projected Cata XP", "value": f"{int(cata_xp):,}"}
+            {"label": "7-Day Projected Combat XP", "value": f"{int(f[1]):,}"},
+            {"label": "7-Day Projected Cata XP", "value": f"{int(f[2]):,}"},
+            {"label": "7-Day Projected Mining XP", "value": f"{int(f[3]):,}"},
+            {"label": "7-Day Projected Farming XP", "value": f"{int(f[4]):,}"},
+            {"label": "7-Day Projected Foraging XP", "value": f"{int(f[5]):,}"},
+            {"label": "7-Day Projected Fishing XP", "value": f"{int(f[6]):,}"}
         ]
 
 GAME_REGISTRY = {

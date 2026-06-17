@@ -88,15 +88,12 @@ class Command(BaseCommand):
                 cata_xp = member_data.get("dungeons", {}).get("dungeon_types", {}).get("catacombs", {}).get("experience", 0)
                 skyblock_xp = member_data.get("leveling", {}).get("experience", 0)
                 
-                # 1. Safely extract purse (checks new 'currencies' object, falls back to old)
                 currencies = member_data.get("currencies", {})
                 purse = currencies.get("coin_purse") if currencies.get("coin_purse") is not None else member_data.get("coin_purse", 0.0)
                 
-                # 2. Extract Co-op Bank
                 coop_bank = profile.get("banking", {}).get("balance", 0.0)
                 if coop_bank is None: coop_bank = 0.0
                 
-                # 3. Extract Personal Bank (Check new currencies object first, then old)
                 personal_bank = currencies.get("bank")
                 if personal_bank is None:
                     personal_bank = member_data.get("profile", {}).get("personal_bank_account", 0.0)

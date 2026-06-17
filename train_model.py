@@ -22,13 +22,12 @@ def load_hypixel_data():
     
     print("Calculating metrics...")
     max_sb_xp = 50000.0
-    max_combat = 100000000.0
-    max_wealth = 5000000000.0
-    max_mining = 100000000.0
-    max_farming = 100000000.0
-    max_foraging = 50000000.0
-    max_fishing = 50000000.0
-    max_cata = 500000000.0
+    max_combat = 111672425.0
+    max_cata = 5698096400.0
+    max_mining = 111672425.0
+    max_farming = 111672425.0
+    max_foraging = 111672425.0
+    max_fishing = 111672425.0
 
     print("Formatting player progression data...")
     all_snaps_list = list(all_snaps.order_by('player_id', 'date'))
@@ -51,31 +50,29 @@ def load_hypixel_data():
                 
             sb_gain = (last.skyblock_xp - first.skyblock_xp) / days_diff
             cb_gain = (last.combat_xp - first.combat_xp) / days_diff
-            wl_gain = ((last.bank_balance + last.purse_balance) - (first.bank_balance + first.purse_balance)) / days_diff
+            ca_gain = (last.catacombs_xp - first.catacombs_xp) / days_diff
             mi_gain = (last.mining_xp - first.mining_xp) / days_diff
             fa_gain = (last.farming_xp - first.farming_xp) / days_diff
             fo_gain = (last.foraging_xp - first.foraging_xp) / days_diff
             fi_gain = (last.fishing_xp - first.fishing_xp) / days_diff
-            ca_gain = (last.catacombs_xp - first.catacombs_xp) / days_diff
             
             x_m1 = min(last.skyblock_xp / max_sb_xp, 1.0)
             x_m2 = min(last.combat_xp / max_combat, 1.0)
-            x_m3 = min((last.bank_balance + last.purse_balance) / max_wealth, 1.0)
+            x_m3 = min(last.catacombs_xp / max_cata, 1.0)
             x_m4 = min(last.mining_xp / max_mining, 1.0)
             x_m5 = min(last.farming_xp / max_farming, 1.0)
             x_m6 = min(last.foraging_xp / max_foraging, 1.0)
             x_m7 = min(last.fishing_xp / max_fishing, 1.0)
-            x_m8 = min(last.catacombs_xp / max_cata, 1.0)
+            x_m8 = 0.0
             
-            # Target (y) is now predicting the GAIN, not the absolute future value!
             y_m1 = max(0.0, min((sb_gain * 7) / max_sb_xp, 1.0))
             y_m2 = max(0.0, min((cb_gain * 7) / max_combat, 1.0))
-            y_m3 = max(0.0, min((wl_gain * 7) / max_wealth, 1.0))
+            y_m3 = max(0.0, min((ca_gain * 7) / max_cata, 1.0))
             y_m4 = max(0.0, min((mi_gain * 7) / max_mining, 1.0))
             y_m5 = max(0.0, min((fa_gain * 7) / max_farming, 1.0))
             y_m6 = max(0.0, min((fo_gain * 7) / max_foraging, 1.0))
             y_m7 = max(0.0, min((fi_gain * 7) / max_fishing, 1.0))
-            y_m8 = max(0.0, min((ca_gain * 7) / max_cata, 1.0))
+            y_m8 = 0.0
             
             X_data.append([x_m1, x_m2, x_m3, x_m4, x_m5, x_m6, x_m7, x_m8])
             y_data.append([y_m1, y_m2, y_m3, y_m4, y_m5, y_m6, y_m7, y_m8])

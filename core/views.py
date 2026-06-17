@@ -14,10 +14,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 import os
-import requests
-import math
 import re
-import numpy as np
 import time
 import json
 import math
@@ -27,15 +24,12 @@ from io import BytesIO
 import requests
 import numpy as np
 from xhtml2pdf import pisa
-from sklearn.metrics.pairwise import cosine_similarity
+import concurrent.futures
 
-from .models import SavedGame, Profile
 from .models import SavedGame, Profile, APILog
 from .forms import ProfileUpdateForm, AccountUpdateForm
 from .ai_model import predict_performance
-from .models import APILog
-import time
-from .integrations import GAME_REGISTRY
+from .integrations import GAME_REGISTRY, get_euclidean_similarity
 
 def broadcast_stats(username, data):
     channel_layer = get_channel_layer()
@@ -125,35 +119,20 @@ def game_search(request):
     error = None
     
     if not stats_data:
-
         start_time = time.time()
-
         status_code = 200
-
         stats_data, error = integration.fetch_stats(username, platform)
-
         elapsed_time = time.time() - start_time
 
         if error:
-
             status_code = 400
 
-
-
         APILog.objects.create(
-
             endpoint=f"Search Engine: {game_choice}",
-
             status_code=status_code,
-
             response_time=round(elapsed_time, 2)
-
         )
-
-            
-
         if stats_data and not error:
-
             cache.set(cache_key, stats_data, 300)
             
     is_linked = False
@@ -163,7 +142,8 @@ def game_search(request):
         insights_data = integration.get_insights(stats_data)
 
         prediction = predict_performance(insights_data['norms'])
-        stats_data['ai_score'] = prediction['ai_score']
+        comp_vec = integration.get_comparison_vector(stats_data)
+        stats_data['ai_score'] = round((sum(comp_vec) / len(comp_vec)) * 100, 1) if comp_vec else 0.0
         stats_data['insights'] = insights_data['insights']
         stats_data['future_predictions'] = integration.get_future_predictions(prediction, stats_data)
 
@@ -172,7 +152,7 @@ def game_search(request):
             
         if 'raw_stats' in stats_data:
             live_data = {s['key']: s['value'] for s in stats_data['raw_stats']}
-            live_data['ai_score'] = prediction['ai_score']
+            live_data['ai_score'] = stats_data['ai_score']
             live_data['main_stat'] = stats_data.get('main_stat')
             live_data['detail_value'] = stats_data.get('detail_value')
             broadcast_stats(username, live_data)
@@ -190,6 +170,11 @@ def api_refresh(request):
     integration = GAME_REGISTRY.get(game_choice)
     if not integration or not username:
         return JsonResponse({"error": "Invalid request"}, status=400)
+        
+    cache_key = f"stats_{game_choice}_{username}_{platform}"
+    refresh_lock_key = f"lock_{cache_key}"
+    if cache.get(refresh_lock_key):
+        return JsonResponse({"status": "throttled"})
 
     stats_data, error = integration.fetch_stats(username, platform)
     if error:
@@ -198,15 +183,16 @@ def api_refresh(request):
 
     insights_data = integration.get_insights(stats_data)
     prediction = predict_performance(insights_data['norms'])
-    stats_data['ai_score'] = prediction['ai_score']
+    comp_vec = integration.get_comparison_vector(stats_data)
+    stats_data['ai_score'] = round((sum(comp_vec) / len(comp_vec)) * 100, 1) if comp_vec else 0.0
     stats_data['future_predictions'] = integration.get_future_predictions(prediction, stats_data)
 
-    cache_key = f"stats_{game_choice}_{username}_{platform}"
     cache.set(cache_key, stats_data, 300)
+    cache.set(refresh_lock_key, True, 60)
 
     if 'raw_stats' in stats_data:
         live_data = {s['key']: s['value'] for s in stats_data['raw_stats']}
-        live_data['ai_score'] = prediction['ai_score']
+        live_data['ai_score'] = stats_data['ai_score']
         live_data['main_stat'] = stats_data.get('main_stat')
         live_data['detail_value'] = stats_data.get('detail_value')
         broadcast_stats(username, live_data)
@@ -216,9 +202,6 @@ def api_refresh(request):
 @login_required
 def link_account(request):
     if request.method == "POST":
-        game_u, game_c = request.POST.get('game_username'), request.POST.get('game_choice')
-        stat, ai_s = request.POST.get('main_stat'), request.POST.get('ai_score', 0)
-        m1, m2, m3 = request.POST.get('m1', 0), request.POST.get('m2', 0), request.POST.get('m3', 0)
         game_u = request.POST.get('game_username')
         game_c = request.POST.get('game_choice')
         stat = request.POST.get('main_stat')
@@ -227,8 +210,6 @@ def link_account(request):
         m2 = request.POST.get('m2', 0)
         m3 = request.POST.get('m3', 0)
         SavedGame.objects.update_or_create(
-            user=request.user, game_username=game_u, platform=game_c,
-            defaults={'time_played': stat, 'm1': m1, 'm2': m2, 'm3': m3, 'ai_score': float(ai_s or 0)}
             user=request.user, 
             game_username=game_u, 
             platform=game_c,
@@ -241,20 +222,28 @@ def link_account(request):
 @login_required
 def dashboard(request):
     user_games = SavedGame.objects.filter(user=request.user).order_by('date_saved')
-    all_other_games = SavedGame.objects.exclude(user=request.user)
+    all_other_games = SavedGame.objects.exclude(user=request.user).select_related('user').order_by('-date_saved')[:100]
     chart_labels = [s.date_saved.strftime("%d %b") for s in user_games]
     chart_data = [s.ai_score for s in user_games]
     recommendations = []
     if user_games.exists():
         my_game = user_games.last()
-        my_vec = np.array([float(my_game.m1 or 0), float(my_game.m2 or 0), (float(my_game.m3 or 0) / 100)]).reshape(1, -1)
-        for other in all_other_games:
-            other_vec = np.array([float(other.m1 or 0), float(other.m2 or 0), (float(other.m3 or 0) / 100)]).reshape(1, -1)
-            sim = cosine_similarity(my_vec, other_vec)[0][0]
-            recommendations.append({
-                'username': other.user.username, 'game_name': other.game_username,
-                'score': round(sim * 100, 1), 'platform': other.platform
+        my_integration = GAME_REGISTRY.get(my_game.platform)
+        if my_integration:
+            my_vec = my_integration.get_comparison_vector({
+                "m1": my_game.m1 or 0, "m2": my_game.m2 or 0, "m3": my_game.m3 or 0
             })
+            for other in all_other_games:
+                other_integration = GAME_REGISTRY.get(other.platform)
+                if other_integration:
+                    other_vec = other_integration.get_comparison_vector({
+                        "m1": other.m1 or 0, "m2": other.m2 or 0, "m3": other.m3 or 0
+                    })
+                    sim = get_euclidean_similarity(my_vec, other_vec)
+                    recommendations.append({
+                        'username': other.user.username, 'game_name': other.game_username,
+                        'score': sim, 'platform': other.platform
+                    })
     recommendations = sorted(recommendations, key=lambda x: x['score'], reverse=True)[:5]
     return render(request, 'core/dashboard.html', {
         'saved_games': user_games, 'matches': recommendations,
@@ -262,7 +251,7 @@ def dashboard(request):
     })
 
 def leaderboard(request):
-    top_scores = SavedGame.objects.order_by('-ai_score')[:10]
+    top_scores = SavedGame.objects.select_related('user').order_by('-ai_score')[:10]
     return render(request, 'core/leaderboard.html', {'top_scores': top_scores})
 
 @login_required
@@ -301,32 +290,38 @@ def profile_edit(request):
     return render(request, 'core/profile_edit.html', {'p_form': p_form})
 
 def player_compare(request):
-    u1, u2 = request.GET.get('user1', '').strip(), request.GET.get('user2', '').strip()
-    game, platform = request.GET.get('game_choice'), request.GET.get('platform', 'epic')
     u1 = request.GET.get('user1', '').strip()
     u2 = request.GET.get('user2', '').strip()
     game = request.GET.get('game_choice')
     platform = request.GET.get('platform', 'epic')
     d1, d2, error = None, None, None
+    similarity = None
     integration = GAME_REGISTRY.get(game)
     if u1 and u2 and integration:
-        d1, _ = integration.fetch_stats(u1, platform)
-        d2, _ = integration.fetch_stats(u2, platform)
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future1 = executor.submit(integration.fetch_stats, u1, platform)
+            future2 = executor.submit(integration.fetch_stats, u2, platform)
+            d1, _ = future1.result()
+            d2, _ = future2.result()
         if d1 and d2:
             i1 = integration.get_insights(d1)
             i2 = integration.get_insights(d2)
             p1 = predict_performance(i1['norms'])
             p2 = predict_performance(i2['norms'])
-            d1['ai_score'] = p1['ai_score']
-            d2['ai_score'] = p2['ai_score']
+            v1 = integration.get_comparison_vector(d1)
+            v2 = integration.get_comparison_vector(d2)
+            d1['ai_score'] = round((sum(v1) / len(v1)) * 100, 1) if v1 else 0.0
+            d2['ai_score'] = round((sum(v2) / len(v2)) * 100, 1) if v2 else 0.0
             d1['future_predictions'] = integration.get_future_predictions(p1, d1)
             d2['future_predictions'] = integration.get_future_predictions(p2, d2)
+            similarity = get_euclidean_similarity(v1, v2)
+            d1['raw_stats'] = integration.get_comparison_display(d1)
+            d2['raw_stats'] = integration.get_comparison_display(d2)
         else:
             error = "Players not found."
-    return render(request, 'core/comparison.html', {'user1': u1, 'user2': u2, 'data1': d1, 'data2': d2, 'game_choice': game, 'error': error})
+    return render(request, 'core/comparison.html', {'user1': u1, 'user2': u2, 'data1': d1, 'data2': d2, 'game_choice': game, 'error': error, 'similarity': similarity})
 
 def clear_history(request):
-    if 'recent_searches' in request.session: del request.session['recent_searches']
     if 'recent_searches' in request.session: 
         del request.session['recent_searches']
     return redirect('home')
@@ -334,15 +329,11 @@ def clear_history(request):
 def login_view(request):
     error = None
     if request.method == "POST":
-        u, p = request.POST.get('username'), request.POST.get('password')
         u = request.POST.get('username')
         p = request.POST.get('password')
         user = authenticate(request, username=u, password=p)
         if user:
             if EmailAddress.objects.filter(user=user, verified=True).exists():
-                login(request, user); return redirect('dashboard')
-            else: error = "Verify email first."
-        else: error = "Invalid login."
                 login(request, user)
                 return redirect('dashboard')
             else: 
@@ -354,9 +345,6 @@ def login_view(request):
 def signup_view(request):
     error = None
     if request.method == "POST":
-        u, e, p = request.POST.get('username'), request.POST.get('email'), request.POST.get('password')
-        if User.objects.filter(username=u).exists(): error = "Username taken."
-        elif User.objects.filter(email=e).exists(): error = "Email registered."
         u = request.POST.get('username')
         e = request.POST.get('email')
         p = request.POST.get('password')
@@ -374,3 +362,9 @@ def signup_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
+
+def custom_404(request, exception):
+    return render(request, 'core/404.html', status=404)
+
+def custom_500(request):
+    return render(request, 'core/500.html', status=500)

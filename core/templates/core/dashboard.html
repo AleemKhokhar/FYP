@@ -48,7 +48,7 @@
         </div>
 
         <div class="chart-container">
-            <h3 class="dash-section-title">AI Performance Trends</h3>
+            <h3 class="dash-section-title">Score Summary Trends</h3>
             <div class="dash-chart-wrapper">
                 <canvas id="performanceChart"></canvas>
             </div>
@@ -67,8 +67,8 @@
                     <span class="platform-badge">{{ game.platform|upper }}</span>
                     <h2 class="dash-card-title">{{ game.game_username }}</h2>
                     <p class="dash-card-time">{{ game.time_played }}</p>
-                    <div class="dash-card-score">{{ game.ai_score }}%</div>
-                    <p class="recent-label dash-card-label">Current AI Rating</p>
+                    <div class="dash-card-score">{{ game.ai_score }}</div>
+                    <p class="recent-label dash-card-label">Score Summary</p>
                     
                     <a href="{% url 'download_report' game.id %}" class="pdf-btn">Download PDF Report</a>
                     <p class="dash-card-sync">Last Sync: {{ game.date_saved|date:"d M Y" }}</p>
@@ -133,7 +133,7 @@
             data: {
                 labels: {{ chart_labels|safe }},
                 datasets: [{
-                    label: 'AI Rating (%)',
+                    label: 'Score Summary',
                     data: {{ chart_data|safe }},
                     borderColor: '#00ff88',
                     backgroundColor: 'rgba(0, 255, 136, 0.1)',

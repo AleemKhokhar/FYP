@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500 - Server Error</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.1">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{% url 'home' %}" class="logo">Gamer<span>Tracker</span></a>
+        </div>
+    </nav>
+    <div class="hero-section" style="margin-top: 10vh; border-color: #ff4444 !important; box-shadow: 0 30px 60px -12px rgba(255, 0, 0, 0.2);">
+        <h1 style="font-size: clamp(4rem, 10vw, 6rem); color: #ff4444; margin: 0; text-shadow: 0 0 30px rgba(255, 68, 68, 0.4);">500</h1>
+        <h2 style="letter-spacing: 4px; margin-top: 0;">SYSTEM OVERLOAD</h2>
+        <p style="color: var(--text-dim); margin-bottom: 40px;">Our servers encountered an unexpected critical error. We're rebooting the neural net.</p>
+        <a href="{% url 'home' %}" class="btn-primary" style="display: inline-block !important; width: auto !important; background: #ff4444 !important; box-shadow: 0 0 20px rgba(255, 68, 68, 0.4) !important;">Initiate Reboot</a>
+    </div>
+</body>
+</html>
