@@ -74,13 +74,17 @@ class GameIntegration:
             response = requests.post(url, headers=headers, json=data, timeout=10)
             if response.status_code != 200:
                 print(f"Gemini HTTP Error: {response.text}")
+                error_message = []
                 if response.status_code == 429:
-                    return ["AI Rate Limit Reached.", "Please wait about 30 seconds before analyzing another profile."]
-                try:
-                    error_details = response.json().get("error", {}).get("message", "Unknown error")
-                except:
-                    error_details = "Invalid API Key or Server Error"
-                return [f"API Error {response.status_code}:", error_details]
+                    error_message = ["AI Rate Limit Reached.", "Please wait about 30 seconds before analyzing another profile."]
+                else:
+                    try:
+                        error_details = response.json().get("error", {}).get("message", "Unknown error")
+                    except:
+                        error_details = "Invalid API Key or Server Error"
+                    error_message = [f"API Error {response.status_code}:", error_details]
+                cache.set(cache_key, error_message, 60)
+                return error_message
                 
             resp_json = response.json()
             text_output = resp_json.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
@@ -90,7 +94,9 @@ class GameIntegration:
             return insights
         except Exception as e:
             print(f"Gemini API Error: {e}")
-            return ["Tactical AI analysis currently offline due to server load."]
+            error_message = ["Tactical AI analysis currently offline due to server load."]
+            cache.set(cache_key, error_message, 60)
+            return error_message
 
 class FortniteIntegration(GameIntegration):
     def fetch_stats(self, username, platform=None):
