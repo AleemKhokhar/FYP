@@ -8,6 +8,8 @@ from django.core.cache import cache
 from django.template.loader import get_template
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from allauth.account.models import EmailAddress
 from channels.layers import get_channel_layer
@@ -353,10 +355,16 @@ def signup_view(request):
         elif User.objects.filter(email=e).exists(): 
             error = "Email registered."
         else:
-            user = User.objects.create_user(username=u, email=e, password=p)
-            email_address = EmailAddress.objects.create(user=user, email=e, primary=True, verified=False)
-            email_address.send_confirmation(request)
-            return redirect('login')
+            try:
+                validate_password(p)
+            except ValidationError as exc:
+                error = " ".join(exc.messages)
+                
+            if not error:
+                user = User.objects.create_user(username=u, email=e, password=p)
+                email_address = EmailAddress.objects.create(user=user, email=e, primary=True, verified=False)
+                email_address.send_confirmation(request)
+                return redirect('login')
     return render(request, 'core/signup.html', {'error': error})
 
 def logout_view(request):
