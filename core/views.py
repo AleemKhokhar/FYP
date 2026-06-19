@@ -50,9 +50,9 @@ def broadcast_stats(username, data):
 @login_required
 def account_settings(request):
     if request.method == 'POST':
+        old_email = User.objects.get(pk=request.user.pk).email
         form = AccountUpdateForm(request.POST, instance=request.user)
         if form.is_valid():
-            old_email = request.user.email
             new_email = form.cleaned_data.get('email')
             if new_email != old_email:
                 EmailAddress.objects.filter(user=request.user).delete()                
@@ -76,6 +76,7 @@ def account_settings(request):
     else:
         form = AccountUpdateForm(instance=request.user)
     return render(request, 'core/account_settings.html', {'form': form})
+
 
 
 @login_required
