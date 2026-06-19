@@ -52,12 +52,31 @@ def account_settings(request):
     if request.method == 'POST':
         form = AccountUpdateForm(request.POST, instance=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Your account details have been updated successfully.")
-            return redirect('dashboard')
+            old_email = request.user.email
+            new_email = form.cleaned_data.get('email')
+            if new_email != old_email:
+                EmailAddress.objects.filter(user=request.user).delete()                
+                user = form.save(commit=False)
+                user.email = new_email
+                user.save()                
+                email_address = EmailAddress.objects.create(
+                    user=user, 
+                    email=new_email, 
+                    primary=True, 
+                    verified=False
+                )
+                email_address.send_confirmation(request)                
+                logout(request)                
+                messages.success(request, "Your email has been updated successfully. A verification link has been sent to your new email. Please verify it before logging in again.")
+                return redirect('login')
+            else:
+                form.save()
+                messages.success(request, "Your account details have been updated successfully.")
+                return redirect('dashboard')
     else:
         form = AccountUpdateForm(instance=request.user)
     return render(request, 'core/account_settings.html', {'form': form})
+
 
 @login_required
 def delete_user_profile(request):
