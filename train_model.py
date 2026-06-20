@@ -2,7 +2,7 @@ import os
 import django
 import numpy as np
 import joblib
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 
@@ -89,8 +89,8 @@ def train():
     if X is None:
         return
     
-    print("Training K-Nearest Neighbors Forecaster...")
-    model = KNeighborsRegressor(n_neighbors=10, weights='distance')
+    print("Training Random Forest Forecaster...")
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
@@ -100,8 +100,8 @@ def train():
     print(f"Evaluation complete! Realistic Test Mean Squared Error: {mse:.6f}")
     
     model.fit(X, y)
-    joblib.dump(model, 'core/trained_knn_model.joblib')
-    print("Model saved as core/trained_knn_model.joblib")
+    joblib.dump(model, 'core/trained_rf_model.joblib')
+    print("Model saved as core/trained_rf_model.joblib")
 
 if __name__ == "__main__":
     train()

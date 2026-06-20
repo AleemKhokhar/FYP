@@ -7,7 +7,7 @@ _MODEL_CACHE = None
 def get_model():
     global _MODEL_CACHE
     if _MODEL_CACHE is None:
-        model_path = os.path.join(os.path.dirname(__file__), 'trained_knn_model.joblib')
+        model_path = os.path.join(os.path.dirname(__file__), 'trained_rf_model.joblib')
         if os.path.exists(model_path):
             _MODEL_CACHE = joblib.load(model_path)
     return _MODEL_CACHE
