@@ -357,26 +357,59 @@ def dashboard(request):
 
     recommendations = []
     if user_games.exists():
-        my_game = user_games.last()
-        my_integration = GAME_REGISTRY.get(my_game.platform)
-        if my_integration:
+        for my_game in user_games:
+            my_integration = GAME_REGISTRY.get(my_game.platform)
+            if not my_integration: continue
+            
             my_vec = my_integration.get_comparison_vector({
                 "m1": my_game.m1 or 0, "m2": my_game.m2 or 0, "m3": my_game.m3 or 0
             })
+            
             for other in all_other_games:
+                if other.platform != my_game.platform:
+                    continue
+                    
                 other_integration = GAME_REGISTRY.get(other.platform)
-                if other_integration:
-                    other_vec = other_integration.get_comparison_vector({
-                        "m1": other.m1 or 0, "m2": other.m2 or 0, "m3": other.m3 or 0
-                    })
-                    sim = get_euclidean_similarity(my_vec, other_vec)
-                    recommendations.append({
-                        'username': other.user.username, 'game_name': other.game_username,
-                        'score': sim, 'platform': other.platform
-                    })
-    recommendations = sorted(recommendations, key=lambda x: x['score'], reverse=True)[:5]
+                if not other_integration: continue
+                
+                other_vec = other_integration.get_comparison_vector({
+                    "m1": other.m1 or 0, "m2": other.m2 or 0, "m3": other.m3 or 0
+                })
+                
+                sim = get_euclidean_similarity(my_vec, other_vec)
+                recommendations.append({
+                    'username': other.user.username, 
+                    'game_name': other.game_username,
+                    'my_game_name': my_game.game_username,
+                    'score': sim, 
+                    'platform': other.platform
+                })
+                
+    # Deduplicate keeping the highest score per unique pair of accounts
+    unique_recs = {}
+    for rec in sorted(recommendations, key=lambda x: x['score'], reverse=True):
+        unique_key = f"{rec['username']}_{rec['game_name']}_{rec['my_game_name']}"
+        if unique_key not in unique_recs:
+            unique_recs[unique_key] = rec
+            
+    # Group by the user's account to guarantee up to 5 matches PER account
+    grouped_recs = {}
+    for rec in unique_recs.values():
+        my_g = rec['my_game_name']
+        if my_g not in grouped_recs:
+            grouped_recs[my_g] = []
+        if len(grouped_recs[my_g]) < 5:
+            grouped_recs[my_g].append(rec)
+            
+    # Flatten the list and sort by score again so the best matches show first
+    final_recommendations = []
+    for group in grouped_recs.values():
+        final_recommendations.extend(group)
+        
+    final_recommendations = sorted(final_recommendations, key=lambda x: x['score'], reverse=True)
+    
     return render(request, 'core/dashboard.html', {
-        'saved_games': user_games, 'matches': recommendations,
+        'saved_games': user_games, 'matches': final_recommendations,
         'charts_config': json.dumps(charts_config)
     })
 
