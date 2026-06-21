@@ -28,6 +28,16 @@
         <div style="text-align: center; margin-bottom: 40px;">
             <h1 style="font-size: 3.5rem; margin: 0;">Global <span>Leaderboard</span></h1>
             <p style="color: var(--text-dim); margin-top: 10px;">Top performing players across all platforms</p>
+            
+            <form method="GET" action="{% url 'leaderboard' %}" style="margin-top: 20px;">
+                <select name="game_choice" onchange="this.form.submit()" style="padding: 10px 20px; font-size: 1rem; background: var(--card-bg); color: white; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; min-width: 200px;">
+                    <option value="all" {% if current_game == 'all' %}selected{% endif %}>All Games</option>
+                    <option value="fortnite" {% if current_game == 'fortnite' %}selected{% endif %}>Fortnite</option>
+                    <option value="hypixel" {% if current_game == 'hypixel' %}selected{% endif %}>Minecraft Hypixel</option>
+                    <option value="clash" {% if current_game == 'clash' %}selected{% endif %}>Clash of Clans</option>
+                    <option value="steam" {% if current_game == 'steam' %}selected{% endif %}>Steam Profile</option>
+                </select>
+            </form>
         </div>
 
         <div class="leaderboard-grid">
