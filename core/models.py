@@ -63,3 +63,26 @@ class DailyStatSnapshot(models.Model):
 
     def __str__(self):
         return f"{self.player.username} - {self.date}"
+
+import datetime
+
+class CrowdsourcedStatSnapshot(models.Model):
+    game_choice = models.CharField(max_length=50)
+    username = models.CharField(max_length=100)
+    platform = models.CharField(max_length=50, blank=True, null=True)
+    date = models.DateField(default=datetime.date.today)
+    
+    m1 = models.FloatField(default=0.0)
+    m2 = models.FloatField(default=0.0)
+    m3 = models.FloatField(default=0.0)
+    m4 = models.FloatField(default=0.0)
+    m5 = models.FloatField(default=0.0)
+    m6 = models.FloatField(default=0.0)
+    m7 = models.FloatField(default=0.0)
+    m8 = models.FloatField(default=0.0)
+
+    class Meta:
+        unique_together = ('game_choice', 'username', 'date')
+
+    def __str__(self):
+        return f"{self.game_choice} | {self.username} | {self.date}"

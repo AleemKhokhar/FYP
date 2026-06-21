@@ -28,7 +28,7 @@ import numpy as np
 from xhtml2pdf import pisa
 import concurrent.futures
 
-from .models import SavedGame, Profile, APILog
+from .models import SavedGame, Profile, APILog, CrowdsourcedStatSnapshot
 from .forms import ProfileUpdateForm, AccountUpdateForm
 from .ai_model import predict_performance
 from .integrations import GAME_REGISTRY, get_euclidean_similarity
@@ -156,6 +156,26 @@ def game_search(request):
         )
         if stats_data and not error:
             cache.set(cache_key, stats_data, 300)
+            try:
+                from datetime import date
+                CrowdsourcedStatSnapshot.objects.get_or_create(
+                    game_choice=game_choice,
+                    username=username,
+                    date=date.today(),
+                    defaults={
+                        'platform': platform,
+                        'm1': float(stats_data.get('m1', 0)),
+                        'm2': float(stats_data.get('m2', 0)),
+                        'm3': float(stats_data.get('m3', 0)),
+                        'm4': float(stats_data.get('m4', 0)),
+                        'm5': float(stats_data.get('m5', 0)),
+                        'm6': float(stats_data.get('m6', 0)),
+                        'm7': float(stats_data.get('m7', 0)),
+                        'm8': float(stats_data.get('m8', 0)),
+                    }
+                )
+            except Exception as e:
+                pass
             
     is_linked = False
     
@@ -163,11 +183,13 @@ def game_search(request):
         
         insights_data = integration.get_insights(stats_data)
 
-        prediction = predict_performance(insights_data['norms'])
+        prediction = predict_performance(insights_data['norms'], game_choice)
         comp_vec = integration.get_comparison_vector(stats_data)
         stats_data['ai_score'] = round((sum(comp_vec) / len(comp_vec)) * 100, 1) if comp_vec else 0.0
         stats_data['insights'] = insights_data['insights']
         stats_data['future_predictions'] = integration.get_future_predictions(prediction, stats_data)
+        if prediction.get('status'):
+            stats_data['future_predictions'] = [{"label": "AI Status", "value": prediction['status']}]
 
         if request.user.is_authenticated:
             is_linked = SavedGame.objects.filter(user=request.user, game_username=username, platform=game_choice).exists()
@@ -202,12 +224,34 @@ def api_refresh(request):
     if error:
         return JsonResponse({"error": error}, status=400)
 
+    try:
+        from datetime import date
+        CrowdsourcedStatSnapshot.objects.get_or_create(
+            game_choice=game_choice,
+            username=username,
+            date=date.today(),
+            defaults={
+                'platform': platform,
+                'm1': float(stats_data.get('m1', 0)),
+                'm2': float(stats_data.get('m2', 0)),
+                'm3': float(stats_data.get('m3', 0)),
+                'm4': float(stats_data.get('m4', 0)),
+                'm5': float(stats_data.get('m5', 0)),
+                'm6': float(stats_data.get('m6', 0)),
+                'm7': float(stats_data.get('m7', 0)),
+                'm8': float(stats_data.get('m8', 0)),
+            }
+        )
+    except Exception as e:
+        pass
 
     insights_data = integration.get_insights(stats_data)
-    prediction = predict_performance(insights_data['norms'])
+    prediction = predict_performance(insights_data['norms'], game_choice)
     comp_vec = integration.get_comparison_vector(stats_data)
     stats_data['ai_score'] = round((sum(comp_vec) / len(comp_vec)) * 100, 1) if comp_vec else 0.0
     stats_data['future_predictions'] = integration.get_future_predictions(prediction, stats_data)
+    if prediction.get('status'):
+        stats_data['future_predictions'] = [{"label": "AI Status", "value": prediction['status']}]
 
     cache.set(cache_key, stats_data, 300)
     cache.set(refresh_lock_key, True, 60)
@@ -224,6 +268,9 @@ def api_refresh(request):
 @login_required
 def link_account(request):
     if request.method == "POST":
+        if SavedGame.objects.filter(user=request.user).count() >= 12:
+            messages.error(request, "You can only link up to 12 accounts.")
+            return redirect('dashboard')
         game_u = request.POST.get('game_username')
         game_c = request.POST.get('game_choice')
         stat = request.POST.get('main_stat')
@@ -245,8 +292,69 @@ def link_account(request):
 def dashboard(request):
     user_games = SavedGame.objects.filter(user=request.user).order_by('date_saved')
     all_other_games = SavedGame.objects.exclude(user=request.user).select_related('user').order_by('-date_saved')[:100]
-    chart_labels = [s.date_saved.strftime("%d %b") for s in user_games]
-    chart_data = [s.ai_score for s in user_games]
+    
+    charts_config = {}
+    
+    if user_games.exists():
+        for game in user_games:
+            integration = GAME_REGISTRY.get(game.platform)
+            if not integration: continue
+            
+            history = CrowdsourcedStatSnapshot.objects.filter(game_choice=game.platform, username=game.game_username).order_by('date')
+            if not history.exists(): continue
+            
+            empty_stats = {"m1": 0, "m2": 0, "m3": 0, "m4": 0, "m5": 0, "m6": 0, "m7": 0, "m8": 0}
+            display_info = integration.get_comparison_display(empty_stats)
+            stat_names = [item["key"] for item in display_info]
+            
+            labels = []
+            datasets = {name: [] for name in stat_names}
+            pred_datasets = {name: [] for name in stat_names}
+            
+            for h in history:
+                labels.append(h.date.strftime("%d %b"))
+                h_stats = {'m1': h.m1, 'm2': h.m2, 'm3': h.m3, 'm4': h.m4, 'm5': h.m5, 'm6': h.m6, 'm7': h.m7, 'm8': h.m8}
+                try:
+                    vec = integration.get_comparison_vector(h_stats)
+                    for i, name in enumerate(stat_names):
+                        if i < len(vec):
+                            val = vec[i] * 100
+                            datasets[name].append(val)
+                            pred_datasets[name].append(None)
+                except Exception as e:
+                    pass
+                    
+            last_snap = history.last()
+            stats_data = {'m1': last_snap.m1, 'm2': last_snap.m2, 'm3': last_snap.m3, 'm4': last_snap.m4, 'm5': last_snap.m5, 'm6': last_snap.m6, 'm7': last_snap.m7, 'm8': last_snap.m8}
+            try:
+                insights_data = integration.get_insights(stats_data)
+                prediction = predict_performance(insights_data['norms'], game.platform)
+                
+                if not prediction.get('status'):
+                    from datetime import timedelta
+                    labels.append((last_snap.date + timedelta(days=7)).strftime("%d %b (Pred)"))
+                    
+                    futures = integration.calculate_future(stats_data, prediction, integration.MAX_VALS)
+                    future_stats_data = {f"m{i+1}": f for i, f in enumerate(futures)}
+                    future_vec = integration.get_comparison_vector(future_stats_data)
+                    
+                    for i, name in enumerate(stat_names):
+                        if i < len(future_vec):
+                            datasets[name].append(None)
+                            
+                            pred_datasets[name][-1] = datasets[name][-2] if len(datasets[name]) > 1 else datasets[name][-1]
+                            
+                            future_val = future_vec[i] * 100
+                            pred_datasets[name].append(future_val)
+            except Exception as e:
+                pass
+                
+            charts_config[game.id] = {
+                'labels': labels,
+                'datasets': datasets,
+                'pred_datasets': pred_datasets
+            }
+
     recommendations = []
     if user_games.exists():
         my_game = user_games.last()
@@ -269,7 +377,7 @@ def dashboard(request):
     recommendations = sorted(recommendations, key=lambda x: x['score'], reverse=True)[:5]
     return render(request, 'core/dashboard.html', {
         'saved_games': user_games, 'matches': recommendations,
-        'chart_labels': chart_labels, 'chart_data': chart_data
+        'charts_config': json.dumps(charts_config)
     })
 
 def leaderboard(request):
@@ -328,14 +436,18 @@ def player_compare(request):
         if d1 and d2:
             i1 = integration.get_insights(d1)
             i2 = integration.get_insights(d2)
-            p1 = predict_performance(i1['norms'])
-            p2 = predict_performance(i2['norms'])
+            p1 = predict_performance(i1['norms'], game)
+            p2 = predict_performance(i2['norms'], game)
             v1 = integration.get_comparison_vector(d1)
             v2 = integration.get_comparison_vector(d2)
             d1['ai_score'] = round((sum(v1) / len(v1)) * 100, 1) if v1 else 0.0
             d2['ai_score'] = round((sum(v2) / len(v2)) * 100, 1) if v2 else 0.0
             d1['future_predictions'] = integration.get_future_predictions(p1, d1)
             d2['future_predictions'] = integration.get_future_predictions(p2, d2)
+            if p1.get('status'):
+                d1['future_predictions'] = [{"label": "AI Status", "value": p1['status']}]
+            if p2.get('status'):
+                d2['future_predictions'] = [{"label": "AI Status", "value": p2['status']}]
             similarity = get_euclidean_similarity(v1, v2)
             d1['raw_stats'] = integration.get_comparison_display(d1)
             d2['raw_stats'] = integration.get_comparison_display(d2)
@@ -396,3 +508,27 @@ def custom_404(request, exception):
 
 def custom_500(request):
     return render(request, 'core/500.html', status=500)
+
+from django.contrib.admin.views.decorators import staff_member_required
+from django.core.mail import EmailMessage
+import csv
+
+@staff_member_required
+def export_csv_email(request):
+    import io
+    csv_file = io.StringIO()
+    writer = csv.writer(csv_file)
+    writer.writerow(['game_choice', 'username', 'platform', 'date', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8'])
+    for snap in CrowdsourcedStatSnapshot.objects.all():
+        writer.writerow([snap.game_choice, snap.username, snap.platform, snap.date, snap.m1, snap.m2, snap.m3, snap.m4, snap.m5, snap.m6, snap.m7, snap.m8])
+    
+    email = EmailMessage(
+        'Database CSV Export',
+        'Attached is the latest AI tracking data.',
+        settings.DEFAULT_FROM_EMAIL,
+        [request.user.email]
+    )
+    email.attach('ai_data.csv', csv_file.getvalue(), 'text/csv')
+    email.send()
+    messages.success(request, "CSV Export emailed successfully.")
+    return redirect('dashboard')

@@ -47,16 +47,9 @@
             {% endif %}
         </div>
 
-        <div class="chart-container">
-            <h3 class="dash-section-title">Score Summary Trends</h3>
-            <div class="dash-chart-wrapper">
-                <canvas id="performanceChart"></canvas>
-            </div>
-        </div>
-
         <div class="dashboard-margin-bottom">
             <div class="dash-section-header">
-                <h3 class="dash-section-heading">Saved Profiles</h3>
+                <h3 class="dash-section-heading">Saved Profiles & Trends</h3>
                 <a href="{% url 'home' %}" class="dash-track-new">+ Track New</a>
             </div>
             
@@ -68,7 +61,11 @@
                     <h2 class="dash-card-title">{{ game.game_username }}</h2>
                     <p class="dash-card-time">{{ game.time_played }}</p>
                     <div class="dash-card-score">{{ game.ai_score }}</div>
-                    <p class="recent-label dash-card-label">Score Summary</p>
+                    <p class="recent-label dash-card-label">Completion % Trends</p>
+                    
+                    <div class="dash-chart-wrapper" style="height: 200px; margin-top: 15px; margin-bottom: 15px;">
+                        <canvas id="chart_{{ game.id }}"></canvas>
+                    </div>
                     
                     <a href="{% url 'download_report' game.id %}" class="pdf-btn">Download PDF Report</a>
                     <p class="dash-card-sync">Last Sync: {{ game.date_saved|date:"d M Y" }}</p>
@@ -84,7 +81,7 @@
 
         <div class="dashboard-margin-bottom">
             <h3 class="dash-section-title">AI Teammate Recommendations</h3>
-            <p class="dash-section-desc">Found via Cosine Similarity playstyle analysis</p>
+            <p class="dash-section-desc">Found via Euclidean Similarity playstyle analysis</p>
 
             <div class="matches-grid">
                 {% for match in matches %}
@@ -126,59 +123,85 @@
     </div>
 
     <script>
-
-        const ctx = document.getElementById('performanceChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: {{ chart_labels|safe }},
-                datasets: [{
-                    label: 'Score Summary',
-                    data: {{ chart_data|safe }},
-                    borderColor: '#00ff88',
-                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
-                    borderWidth: 3,
-                    pointBackgroundColor: '#00ff88',
+        const chartsConfig = {{ charts_config|safe }};
+        const colors = ['#00ff88', '#ffaa00', '#00e5ff', '#ff00aa', '#ffff00', '#aa00ff', '#ff5500', '#00ff00'];
+        
+        Object.keys(chartsConfig).forEach(gameId => {
+            const config = chartsConfig[gameId];
+            const canvasId = 'chart_' + gameId;
+            const ctxElem = document.getElementById(canvasId);
+            if (!ctxElem) return;
+            const ctx = ctxElem.getContext('2d');
+            
+            const datasets = [];
+            let colorIndex = 0;
+            
+            Object.keys(config.datasets).forEach(statName => {
+                const color = colors[colorIndex % colors.length];
+                
+                datasets.push({
+                    label: statName + ' (History)',
+                    data: config.datasets[statName],
+                    borderColor: color,
+                    backgroundColor: color + '1a', // 10% opacity hex
+                    borderWidth: 2,
+                    pointBackgroundColor: color,
                     tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        grid: { color: 'rgba(255,255,255,0.05)' },
-                        ticks: { color: '#888' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#888' }
-                    }
+                    fill: false
+                });
+                
+                datasets.push({
+                    label: statName + ' (Prediction)',
+                    data: config.pred_datasets[statName],
+                    borderColor: color,
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointBackgroundColor: color,
+                    tension: 0.4,
+                    fill: false
+                });
+                
+                colorIndex++;
+            });
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: config.labels,
+                    datasets: datasets
                 },
-                plugins: {
-                    legend: { display: false }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { 
+                                color: '#888',
+                                callback: function(value) { return value + '%'; }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#888' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + Math.round(context.raw) + '%';
+                                }
+                            }
+                        }
+                    }
                 }
-            }
+            });
         });
 
-        function refreshDashboard() {
-            fetch(window.location.href)
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newGrid = doc.querySelector('.stats-grid');
-                    const oldGrid = document.querySelector('.stats-grid');
-                    if (oldGrid && newGrid) {
-                        oldGrid.innerHTML = newGrid.innerHTML;
-                    }
-                })
-                .catch(err => console.warn('Update failed:', err));
-        }
-        setInterval(refreshDashboard, 30000);
     </script>
 </body>
 </html>

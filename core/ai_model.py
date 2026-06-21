@@ -1,29 +1,56 @@
 import os
 import numpy as np
 import joblib
+from .models import CrowdsourcedStatSnapshot
+from django.db.models import Count
+from django.core.mail import mail_admins
 
-_MODEL_CACHE = None
+_MODEL_CACHE = {}
 
-def get_model():
+def get_model(game_choice):
     global _MODEL_CACHE
-    if _MODEL_CACHE is None:
-        model_path = os.path.join(os.path.dirname(__file__), 'trained_rf_model.joblib')
+    if game_choice not in _MODEL_CACHE:
+        model_path = os.path.join(os.path.dirname(__file__), f'trained_rf_model_{game_choice}.joblib')
         if os.path.exists(model_path):
-            _MODEL_CACHE = joblib.load(model_path)
-    return _MODEL_CACHE
+            _MODEL_CACHE[game_choice] = joblib.load(model_path)
+        else:
+            _MODEL_CACHE[game_choice] = None
+    return _MODEL_CACHE[game_choice]
 
-def predict_performance(norms):
+def predict_performance(norms, game_choice='hypixel'):
+    model = get_model(game_choice)
+    
+    if not model:
+        try:
+            eligible_users = CrowdsourcedStatSnapshot.objects.filter(game_choice=game_choice).values('username').annotate(snap_count=Count('id')).filter(snap_count__gte=2).count()
+            
+            if eligible_users == 100:
+                mail_admins(
+                    subject=f"AI Ready for Training: {game_choice}",
+                    message=f"The game '{game_choice}' has reached 100 eligible users. Run 'python manage.py train_ai {game_choice}'."
+                )
+                    
+            if eligible_users >= 100:
+                status = "Ready for Training (Awaiting Admin)"
+            else:
+                status = f"Learning ({eligible_users}/100 Players)"
+        except Exception:
+            status = "Learning (Database init pending)"
+
+        return {
+            "ai_score": 0.0,
+            "status": status,
+            "future_m1": 0.0, "future_m2": 0.0, "future_m3": 0.0,
+            "future_m4": 0.0, "future_m5": 0.0, "future_m6": 0.0,
+            "future_m7": 0.0, "future_m8": 0.0
+        }
+
     default_resp = {
         "ai_score": 0.5,
         "future_m1": 0.0, "future_m2": 0.0, "future_m3": 0.0,
         "future_m4": 0.0, "future_m5": 0.0, "future_m6": 0.0,
         "future_m7": 0.0, "future_m8": 0.0
     }
-
-    model = get_model()
-    if not model:
-        return default_resp
-        
     try:
         padded_norms = norms + [0.0] * (8 - len(norms))
         X_scaled = [min(float(n) / 10.0, 1.0) for n in padded_norms]

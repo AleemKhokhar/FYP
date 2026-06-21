@@ -21,7 +21,7 @@ def load_hypixel_data():
     X_data, y_data = [], []
     
     print("Calculating metrics...")
-    max_sb_xp = 50000.0
+    max_sb_xp = 60000.0
     max_combat = 111672425.0
     max_cata = 5698096400.0
     max_mining = 111672425.0

@@ -181,13 +181,15 @@ class ClashIntegration(GameIntegration):
         except Exception as e:
             return None, str(e)
 
+    MAX_VALS = [16.0, 5000.0, 2000.0]
+
     def get_insights(self, stats_data):
-        norms = self.normalize_metrics(stats_data, [16.0, 5000.0, 2000.0])
+        norms = self.normalize_metrics(stats_data, self.MAX_VALS)
         insights = self.generate_llm_insights("Clash of Clans", stats_data)
         return {"norms": norms, "insights": insights}
 
     def get_comparison_vector(self, stats_data):
-        norms = self.normalize_metrics(stats_data, [16.0, 5000.0, 2000.0])
+        norms = self.normalize_metrics(stats_data, self.MAX_VALS)
         return [n / 10.0 for n in norms]
 
     def get_comparison_display(self, stats_data):
@@ -198,7 +200,7 @@ class ClashIntegration(GameIntegration):
         ]
 
     def get_future_predictions(self, prediction, stats_data):
-        f = self.calculate_future(stats_data, prediction, [16.0, 5000.0, 2000.0])
+        f = self.calculate_future(stats_data, prediction, self.MAX_VALS)
         return [
             {"label": "Projected Town Hall", "value": int(f[0])},
             {"label": "Projected Trophies", "value": int(f[1])},
@@ -249,8 +251,10 @@ class SteamIntegration(GameIntegration):
         except Exception as e:
             return None, str(e)
 
+    MAX_VALS = [100.0, 0, 0]
+
     def get_insights(self, stats_data):
-        norms = self.normalize_metrics(stats_data, [100.0, 0, 0])
+        norms = self.normalize_metrics(stats_data, self.MAX_VALS)
         insights = self.generate_llm_insights("Steam", stats_data)
         return {"norms": norms, "insights": insights}
 
@@ -264,7 +268,7 @@ class SteamIntegration(GameIntegration):
         ]
 
     def get_future_predictions(self, prediction, stats_data):
-        f = self.calculate_future(stats_data, prediction, [100.0, 0, 0])
+        f = self.calculate_future(stats_data, prediction, self.MAX_VALS)
         return [
             {"label": "Projected Steam Level", "value": int(f[0])}
         ]
@@ -335,9 +339,10 @@ class HypixelIntegration(GameIntegration):
         except Exception as e:
             return None, str(e)
 
+    MAX_VALS = [60000.0, 111672425.0, 569809640.0, 111672425.0, 111672425.0, 111672425.0, 111672425.0, 0.0]
+
     def get_insights(self, stats_data):
-        max_vals = [50000.0, 111672425.0, 5698096400.0, 111672425.0, 111672425.0, 111672425.0, 111672425.0, 0.0]
-        norms = self.normalize_metrics(stats_data, max_vals)
+        norms = self.normalize_metrics(stats_data, self.MAX_VALS)
         insights = self.generate_llm_insights("Minecraft Hypixel Skyblock", stats_data)
         return {"norms": norms, "insights": insights}
 
@@ -399,17 +404,16 @@ class HypixelIntegration(GameIntegration):
         ]
 
     def get_future_predictions(self, prediction, stats_data):
-        max_vals = [50000.0, 111672425.0, 5698096400.0, 111672425.0, 111672425.0, 111672425.0, 111672425.0, 0.0]
-        f = self.calculate_future(stats_data, prediction, max_vals)
+        f = self.calculate_future(stats_data, prediction, self.MAX_VALS)
         sb_level = f[0] / 100
         return [
-            {"label": "7-Day Projected SB Level", "value": f"{int(sb_level)}"},
+            {"label": "7-Day Projected SB XP", "value": f"{int(f[0]):,}"},
             {"label": "7-Day Projected Combat XP", "value": f"{int(f[1]):,}"},
-            {"label": "7-Day Projected Cata XP", "value": f"{int(f[2]):,}"},
             {"label": "7-Day Projected Mining XP", "value": f"{int(f[3]):,}"},
             {"label": "7-Day Projected Farming XP", "value": f"{int(f[4]):,}"},
             {"label": "7-Day Projected Foraging XP", "value": f"{int(f[5]):,}"},
-            {"label": "7-Day Projected Fishing XP", "value": f"{int(f[6]):,}"}
+            {"label": "7-Day Projected Fishing XP", "value": f"{int(f[6]):,}"},
+            {"label": "7-Day Projected Cata XP", "value": f"{int(f[2]):,}"}
         ]
 
 GAME_REGISTRY = {
