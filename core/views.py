@@ -414,14 +414,129 @@ def dashboard(request):
     })
 
 def leaderboard(request):
-    top_scores = SavedGame.objects.select_related('user').order_by('-ai_score')[:10]
-    return render(request, 'core/leaderboard.html', {'top_scores': top_scores})
+    game_choice = request.GET.get('game_choice', 'all').lower().strip()
+    
+    query = SavedGame.objects.select_related('user')
+    if game_choice != 'all':
+        query = query.filter(platform=game_choice)
+        
+    top_scores = query.order_by('-ai_score')[:20]
+    
+    return render(request, 'core/leaderboard.html', {
+        'top_scores': top_scores,
+        'current_game': game_choice
+    })
 
 @login_required
 def download_report(request, stat_id):
     stat = get_object_or_404(SavedGame, id=stat_id, user=request.user)
+    
+    integration = GAME_REGISTRY.get(stat.platform)
+    history = CrowdsourcedStatSnapshot.objects.filter(game_choice=stat.platform, username=stat.game_username).order_by('date')
+    
+    all_stats = []
+    base64_chart = ""
+    
+    if integration and history.exists():
+        empty_stats = {"m1": 0, "m2": 0, "m3": 0, "m4": 0, "m5": 0, "m6": 0, "m7": 0, "m8": 0}
+        display_info = integration.get_comparison_display(empty_stats)
+        stat_names = [item["key"] for item in display_info]
+        
+        labels = []
+        datasets = {name: [] for name in stat_names}
+        pred_datasets = {name: [] for name in stat_names}
+        
+        for h in history:
+            labels.append(h.date.strftime("%d %b"))
+            h_stats = {'m1': h.m1, 'm2': h.m2, 'm3': h.m3, 'm4': h.m4, 'm5': h.m5, 'm6': h.m6, 'm7': h.m7, 'm8': h.m8}
+            try:
+                vec = integration.get_comparison_vector(h_stats)
+                for i, name in enumerate(stat_names):
+                    if i < len(vec):
+                        val = vec[i] * 100
+                        datasets[name].append(round(val, 1))
+                        pred_datasets[name].append(None)
+            except Exception as e:
+                pass
+                
+        last_snap = history.last()
+        stats_data = {'m1': last_snap.m1, 'm2': last_snap.m2, 'm3': last_snap.m3, 'm4': last_snap.m4, 'm5': last_snap.m5, 'm6': last_snap.m6, 'm7': last_snap.m7, 'm8': last_snap.m8}
+        
+        all_stats = integration.get_comparison_display(stats_data)
+        
+        try:
+            insights_data = integration.get_insights(stats_data)
+            prediction = predict_performance(insights_data['norms'], stat.platform)
+            
+            if not prediction.get('status'):
+                from datetime import timedelta
+                labels.append((last_snap.date + timedelta(days=7)).strftime("%d %b (Pred)"))
+                
+                futures = integration.calculate_future(stats_data, prediction, integration.MAX_VALS)
+                future_stats_data = {f"m{i+1}": f for i, f in enumerate(futures)}
+                future_vec = integration.get_comparison_vector(future_stats_data)
+                
+                for i, name in enumerate(stat_names):
+                    if i < len(future_vec):
+                        datasets[name].append(None)
+                        pred_datasets[name][-1] = datasets[name][-2] if len(datasets[name]) > 1 else datasets[name][-1]
+                        future_val = future_vec[i] * 100
+                        pred_datasets[name].append(round(future_val, 1))
+        except Exception as e:
+            pass
+            
+        chart_datasets = []
+        colors = ['#00ff88', '#ffaa00', '#00e5ff', '#ff00aa', '#ffff00', '#aa00ff', '#ff5500', '#00ff00']
+        for i, name in enumerate(stat_names):
+            color = colors[i % len(colors)]
+            chart_datasets.append({
+                "label": f"{name} (History)",
+                "data": datasets[name],
+                "borderColor": color,
+                "fill": False,
+                "tension": 0.4
+            })
+            if any(v is not None for v in pred_datasets[name]):
+                chart_datasets.append({
+                    "label": f"{name} (Prediction)",
+                    "data": pred_datasets[name],
+                    "borderColor": color,
+                    "borderDash": [5, 5],
+                    "fill": False,
+                    "tension": 0.4
+                })
+        
+        chart_config = {
+            "type": "line",
+            "data": {
+                "labels": labels,
+                "datasets": chart_datasets
+            },
+            "options": {
+                "plugins": { "legend": { "display": False } },
+                "scales": { "y": { "beginAtZero": True, "max": 100 } }
+            }
+        }
+        
+        import requests
+        import base64
+        import urllib.parse
+        
+        try:
+            qc_url = f"https://quickchart.io/chart?c={urllib.parse.quote(json.dumps(chart_config))}&width=800&height=300&backgroundColor=222"
+            img_resp = requests.get(qc_url, timeout=10)
+            if img_resp.status_code == 200:
+                base64_chart = base64.b64encode(img_resp.content).decode('utf-8')
+        except Exception:
+            pass
+
     template = get_template('core/pdf_template.html')
-    html = template.render({'stat': stat, 'user': request.user})
+    html = template.render({
+        'stat': stat, 
+        'user': request.user,
+        'all_stats': all_stats,
+        'base64_chart': base64_chart
+    })
     
     result = BytesIO()
     pdf = pisa.CreatePDF(BytesIO(html.encode("UTF-8")), dest=result)

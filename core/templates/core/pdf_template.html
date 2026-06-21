@@ -57,11 +57,18 @@
     <div class="stat-box">
         <h2>Target Profile: {{ stat.game_username }}</h2>
         <p><strong>Platform/Game:</strong> {{ stat.platform|title }}</p>
-        <p><strong>Time Played / Main Stat:</strong> {{ stat.time_played }}</p>
+        <p><strong>Date Archived:</strong> {{ stat.date_saved|date:"F j, Y" }}</p>
         <p><strong>AI Predictive Score:</strong> <span class="ai-score">{{ stat.ai_score }}%</span></p>
     </div>
 
-    <h3>Raw Telemetry Data</h3>
+    {% if base64_chart %}
+    <h3>Visual Performance Trajectory</h3>
+    <div style="text-align: center; margin-bottom: 30px;">
+        <img src="data:image/png;base64,{{ base64_chart }}" style="width: 100%; max-height: 400px; border: 1px solid #e1e4e8; border-radius: 6px;"/>
+    </div>
+    {% endif %}
+
+    <h3>Complete Telemetry Data</h3>
     <table>
         <thead>
             <tr>
@@ -70,6 +77,12 @@
             </tr>
         </thead>
         <tbody>
+            {% for item in all_stats %}
+            <tr>
+                <td>{{ item.key }}</td>
+                <td>{{ item.value }}</td>
+            </tr>
+            {% empty %}
             <tr>
                 <td>Core Metric 1</td>
                 <td>{{ stat.m1 }}</td>
@@ -82,10 +95,7 @@
                 <td>Core Metric 3</td>
                 <td>{{ stat.m3 }}</td>
             </tr>
-            <tr>
-                <td>Date Archived</td>
-                <td>{{ stat.date_saved|date:"F j, Y" }}</td>
-            </tr>
+            {% endfor %}
         </tbody>
     </table>
 </body>
