@@ -104,8 +104,8 @@ def export_user_data(request):
         export_data["telemetry_data"].append({
             "platform": game.platform,
             "game_username": game.game_username,
-            "time_played": game.time_played,
-            "ai_score": game.ai_score,
+            "main_stat": game.time_played,
+            "sim": game.sim,
             "raw_metrics": {"m1": game.m1, "m2": game.m2, "m3": game.m3},
             "date_saved": game.date_saved.isoformat() if game.date_saved else None
         })
@@ -185,7 +185,7 @@ def game_search(request):
 
         prediction = predict_performance(insights_data['norms'], game_choice)
         comp_vec = integration.get_comparison_vector(stats_data)
-        stats_data['ai_score'] = round((sum(comp_vec) / len(comp_vec)) * 100, 1) if comp_vec else 0.0
+        stats_data['sim'] = round((sum(comp_vec) / len(comp_vec)) * 100, 1) if comp_vec else 0.0
         stats_data['insights'] = insights_data['insights']
         stats_data['future_predictions'] = integration.get_future_predictions(prediction, stats_data)
         if prediction.get('status'):
@@ -196,7 +196,7 @@ def game_search(request):
             
         if 'raw_stats' in stats_data:
             live_data = {s['key']: s['value'] for s in stats_data['raw_stats']}
-            live_data['ai_score'] = stats_data['ai_score']
+            live_data['sim'] = stats_data['sim']
             live_data['main_stat'] = stats_data.get('main_stat')
             live_data['detail_value'] = stats_data.get('detail_value')
             broadcast_stats(username, live_data)
@@ -248,7 +248,7 @@ def api_refresh(request):
     insights_data = integration.get_insights(stats_data)
     prediction = predict_performance(insights_data['norms'], game_choice)
     comp_vec = integration.get_comparison_vector(stats_data)
-    stats_data['ai_score'] = round((sum(comp_vec) / len(comp_vec)) * 100, 1) if comp_vec else 0.0
+    stats_data['sim'] = round((sum(comp_vec) / len(comp_vec)) * 100, 1) if comp_vec else 0.0
     stats_data['future_predictions'] = integration.get_future_predictions(prediction, stats_data)
     if prediction.get('status'):
         stats_data['future_predictions'] = [{"label": "AI Status", "value": prediction['status']}]
@@ -258,7 +258,7 @@ def api_refresh(request):
 
     if 'raw_stats' in stats_data:
         live_data = {s['key']: s['value'] for s in stats_data['raw_stats']}
-        live_data['ai_score'] = stats_data['ai_score']
+        live_data['sim'] = stats_data['sim']
         live_data['main_stat'] = stats_data.get('main_stat')
         live_data['detail_value'] = stats_data.get('detail_value')
         broadcast_stats(username, live_data)
@@ -274,7 +274,7 @@ def link_account(request):
         game_u = request.POST.get('game_username')
         game_c = request.POST.get('game_choice')
         stat = request.POST.get('main_stat')
-        ai_s = request.POST.get('ai_score', 0)
+        ai_s = request.POST.get('sim', 0)
         m1 = request.POST.get('m1', 0)
         m2 = request.POST.get('m2', 0)
         m3 = request.POST.get('m3', 0)
@@ -283,7 +283,7 @@ def link_account(request):
             game_username=game_u, 
             platform=game_c,
             defaults={
-                'time_played': stat, 'm1': m1, 'm2': m2, 'm3': m3, 'ai_score': float(ai_s or 0)
+                'time_played': stat, 'm1': m1, 'm2': m2, 'm3': m3, 'sim': float(ai_s or 0)
             }
         )
     return redirect('dashboard')
@@ -385,14 +385,12 @@ def dashboard(request):
                     'platform': other.platform
                 })
                 
-    # Deduplicate keeping the highest score per unique pair of accounts
     unique_recs = {}
     for rec in sorted(recommendations, key=lambda x: x['score'], reverse=True):
         unique_key = f"{rec['username']}_{rec['game_name']}_{rec['my_game_name']}"
         if unique_key not in unique_recs:
             unique_recs[unique_key] = rec
             
-    # Group by the user's account to guarantee up to 5 matches PER account
     grouped_recs = {}
     for rec in unique_recs.values():
         my_g = rec['my_game_name']
@@ -401,7 +399,6 @@ def dashboard(request):
         if len(grouped_recs[my_g]) < 5:
             grouped_recs[my_g].append(rec)
             
-    # Flatten the list and sort by score again so the best matches show first
     final_recommendations = []
     for group in grouped_recs.values():
         final_recommendations.extend(group)
@@ -420,7 +417,7 @@ def leaderboard(request):
     if game_choice != 'all':
         query = query.filter(platform=game_choice)
         
-    top_scores = query.order_by('-ai_score')[:20]
+    top_scores = query.order_by('-sim')[:20]
     
     return render(request, 'core/leaderboard.html', {
         'top_scores': top_scores,
@@ -588,8 +585,8 @@ def player_compare(request):
             p2 = predict_performance(i2['norms'], game)
             v1 = integration.get_comparison_vector(d1)
             v2 = integration.get_comparison_vector(d2)
-            d1['ai_score'] = round((sum(v1) / len(v1)) * 100, 1) if v1 else 0.0
-            d2['ai_score'] = round((sum(v2) / len(v2)) * 100, 1) if v2 else 0.0
+            d1['sim'] = round((sum(v1) / len(v1)) * 100, 1) if v1 else 0.0
+            d2['sim'] = round((sum(v2) / len(v2)) * 100, 1) if v2 else 0.0
             d1['future_predictions'] = integration.get_future_predictions(p1, d1)
             d2['future_predictions'] = integration.get_future_predictions(p2, d2)
             if p1.get('status'):

@@ -38,7 +38,7 @@ def predict_performance(norms, game_choice='hypixel'):
             status = "Learning (Database init pending)"
 
         return {
-            "ai_score": 0.0,
+            "sim": 0.0,
             "status": status,
             "future_m1": 0.0, "future_m2": 0.0, "future_m3": 0.0,
             "future_m4": 0.0, "future_m5": 0.0, "future_m6": 0.0,
@@ -46,7 +46,7 @@ def predict_performance(norms, game_choice='hypixel'):
         }
 
     default_resp = {
-        "ai_score": 0.5,
+        "sim": 0.5,
         "future_m1": 0.0, "future_m2": 0.0, "future_m3": 0.0,
         "future_m4": 0.0, "future_m5": 0.0, "future_m6": 0.0,
         "future_m7": 0.0, "future_m8": 0.0
@@ -65,7 +65,7 @@ def predict_performance(norms, game_choice='hypixel'):
         weighted_score = float((abs_m1 * 0.5) + (abs_m2 * 0.3) + (abs_m3 * 0.2)) * 100
         
         return {
-            "ai_score": round(max(weighted_score, 0.5), 1),
+            "sim": round(max(weighted_score, 0.5), 1),
             "future_m1": float(future_preds[0]) * 10.0 if len(future_preds) > 0 else 0.0,
             "future_m2": float(future_preds[1]) * 10.0 if len(future_preds) > 1 else 0.0,
             "future_m3": float(future_preds[2]) * 10.0 if len(future_preds) > 2 else 0.0,

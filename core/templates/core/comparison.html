@@ -63,17 +63,17 @@
         </div>
 
         <div class="comparison-cards">
-            <div class="player-vs-card {% if data1.ai_score > data2.ai_score %}winner{% endif %}">
-                {% if data1.ai_score > data2.ai_score %}<div class="winner-label">Higher Rated</div>{% endif %}
+            <div class="player-vs-card {% if data1.sim > data2.sim %}winner{% endif %}">
+                {% if data1.sim > data2.sim %}<div class="winner-label">Higher Rated</div>{% endif %}
                 <h2 class="player-name">{{ user1 }}</h2>
-                <div class="player-score">{{ data1.ai_score }}</div>
+                <div class="player-score">{{ data1.sim }}</div>
                 <p class="recent-label">Score Summary</p>
             </div>
 
-            <div class="player-vs-card {% if data2.ai_score > data1.ai_score %}winner{% endif %}">
-                {% if data2.ai_score > data1.ai_score %}<div class="winner-label">Higher Rated</div>{% endif %}
+            <div class="player-vs-card {% if data2.sim > data1.sim %}winner{% endif %}">
+                {% if data2.sim > data1.sim %}<div class="winner-label">Higher Rated</div>{% endif %}
                 <h2 class="player-name">{{ user2 }}</h2>
-                <div class="player-score">{{ data2.ai_score }}</div>
+                <div class="player-score">{{ data2.sim }}</div>
                 <p class="recent-label">Score Summary</p>
             </div>
         </div>
@@ -82,9 +82,9 @@
             <h3 class="breakdown-title">DETAILED BREAKDOWN</h3>
             
             <div class="stat-row">
-                <div class="stat-value {% if data1.ai_score > data2.ai_score %}high{% endif %}">{{ data1.main_stat }}</div>
+                <div class="stat-value {% if data1.sim > data2.sim %}high{% endif %}">{{ data1.main_stat }}</div>
                 <div class="stat-label">Main Metric</div>
-                <div class="stat-value {% if data2.ai_score > data1.ai_score %}high{% endif %}">{{ data2.main_stat }}</div>
+                <div class="stat-value {% if data2.sim > data1.sim %}high{% endif %}">{{ data2.main_stat }}</div>
             </div>
 
             {% for s1 in data1.raw_stats %}
@@ -105,9 +105,9 @@
         <div class="hero-card tactical-card">
             <h3 class="tactical-title">TACTICAL VERDICT</h3>
             <p class="tactical-text">
-                {% if data1.ai_score > data2.ai_score %}
+                {% if data1.sim > data2.sim %}
                     <span class="tactical-highlight">{{ user1 }}</span> is predicted to have the tactical advantage in this engagement.
-                {% elif data2.ai_score > data1.ai_score %}
+                {% elif data2.sim > data1.sim %}
                     <span class="tactical-highlight">{{ user2 }}</span> is predicted to have the tactical advantage in this engagement.
                 {% else %}
                     Both players exhibit identical combat performance patterns.

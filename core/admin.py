@@ -3,7 +3,7 @@ from .models import SavedGame, Profile, APILog
 
 @admin.register(SavedGame)
 class SavedGameAdmin(admin.ModelAdmin):
-    list_display = ('game_username', 'platform', 'ai_score', 'user', 'date_saved')
+    list_display = ('game_username', 'platform', 'sim', 'user', 'date_saved')
     list_filter = ('platform', 'date_saved')
     search_fields = ('game_username', 'user__username')
     ordering = ('-date_saved',)

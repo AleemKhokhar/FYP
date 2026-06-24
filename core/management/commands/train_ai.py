@@ -64,7 +64,6 @@ class Command(BaseCommand):
                 x_vec_last = [min(float(n) / 10.0, 1.0) for n in norms_last]
                 x_vec_last += [0.0] * (8 - len(x_vec_last))
                 
-                # Predict 7 days in the future (difference)
                 y_vec = []
                 for i in range(8):
                     diff = x_vec_last[i] - x_vec_first[i]

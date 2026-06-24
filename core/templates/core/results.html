@@ -56,7 +56,7 @@
             <div class="ai-prediction-section">
                 <p class="recent-label ai-prediction-label">Score Summary</p>
                 <div id="ai-prediction-value" aria-live="polite" class="ai-prediction-score">
-                    {{ stats.ai_score }}
+                    {{ stats.sim }}
                 </div>
                 <p class="ai-prediction-desc">Overall average progression across all tracked skill levels and metrics.</p>
             </div>
@@ -112,7 +112,7 @@
             <input type="hidden" name="m1" value="{{ stats.m1 }}" />
             <input type="hidden" name="m2" value="{{ stats.m2 }}" />
             <input type="hidden" name="m3" value="{{ stats.m3 }}" />
-            <input type="hidden" name="ai_score" value="{{ stats.ai_score }}" />
+            <input type="hidden" name="sim" value="{{ stats.sim }}" />
             <button type="submit" class="btn-primary">
                 {% if is_linked %}Update Neural Link{% else %}Link to my dashboard{% endif %}
             </button>
@@ -143,9 +143,9 @@
 
         statSocket.onmessage = function (e) {
             const data = JSON.parse(e.data);
-            if (data.stats.ai_score) {
+            if (data.stats.sim) {
                 const aiElem = document.getElementById("ai-prediction-value");
-                if (aiElem) aiElem.innerText = data.stats.ai_score;
+                if (aiElem) aiElem.innerText = data.stats.sim;
             }
             for (const [key, value] of Object.entries(data.stats)) {
                 const element = document.getElementById(`stat-${key}`);

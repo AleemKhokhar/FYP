@@ -16,7 +16,7 @@ class SavedGame(models.Model):
     game_username = models.CharField(max_length=100)
     platform = models.CharField(max_length=50)
     time_played = models.CharField(max_length=100, null=True, blank=True)
-    ai_score = models.FloatField(default=0.0)
+    sim = models.FloatField(default=0.0)
     m1 = models.CharField(max_length=100, null=True, blank=True)
     m2 = models.CharField(max_length=100, null=True, blank=True)
     m3 = models.CharField(max_length=100, null=True, blank=True)
