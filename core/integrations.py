@@ -278,12 +278,12 @@ class HypixelIntegration(GameIntegration):
         api_key = os.getenv("HYPIXEL_API_KEY")
         if not api_key:
             return None, "Hypixel API Key missing."
-        url_uuid = f"https://api.mojang.com/users/profiles/minecraft/{username}"
+        url_uuid = f"https://api.ashcon.app/mojang/v2/user/{username}"
         try:
             r_uuid = requests.get(url_uuid, timeout=10)
             if r_uuid.status_code != 200:
                 return None, "Minecraft Account Not Found"
-            uuid = r_uuid.json().get("id")
+            uuid = r_uuid.json().get("uuid")
             
             url_stats = f"https://api.hypixel.net/v2/skyblock/profiles?uuid={uuid}"
             headers = {"API-Key": api_key}
