@@ -71,7 +71,7 @@ class GameIntegration:
             headers = {'Content-Type': 'application/json'}
             data = {"contents": [{"parts": [{"text": prompt}]}]}
             
-            response = requests.post(url, headers=headers, json=data, timeout=10)
+            response = requests.post(url, headers=headers, json=data, timeout=30)
             if response.status_code != 200:
                 print(f"Gemini HTTP Error: {response.text}")
                 error_message = []
