@@ -24,11 +24,28 @@ def predict_performance(norms, game_choice='hypixel'):
         try:
             eligible_users = CrowdsourcedStatSnapshot.objects.filter(game_choice=game_choice).values('username').annotate(snap_count=Count('id')).filter(snap_count__gte=2).count()
             
-            if eligible_users == 100:
-                mail_admins(
-                    subject=f"AI Ready for Training: {game_choice}",
-                    message=f"The game '{game_choice}' has reached 100 eligible users. Run 'python manage.py train_ai {game_choice}'."
-                )
+            if eligible_users >= 100:
+                from django.core.cache import cache
+                from django.contrib.auth.models import User
+                from django.core.mail import send_mail
+                from django.conf import settings
+                
+                cache_key = f"training_email_sent_{game_choice}"
+                if not cache.get(cache_key):
+                    # Dynamically get all registered admins from the database
+                    admin_emails = list(User.objects.filter(is_superuser=True).values_list('email', flat=True))
+                    valid_emails = [e for e in admin_emails if e]
+                    
+                    if valid_emails:
+                        send_mail(
+                            subject=f"AI Ready for Training: {game_choice}",
+                            message=f"The game '{game_choice}' has reached 100 eligible users.\nRun 'python manage.py train_ai {game_choice}'.",
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=valid_emails,
+                            fail_silently=True
+                        )
+                        # Set cache so it doesn't spam emails every time someone searches
+                        cache.set(cache_key, True, timeout=None)
                     
             if eligible_users >= 100:
                 status = "Ready for Training (Awaiting Admin)"
