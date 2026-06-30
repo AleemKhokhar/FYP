@@ -38,8 +38,11 @@ def main():
     successful = 0
     failed = 0
 
+    import urllib.parse
+    
     for username in usernames:
-        url = f"{base_url}/search/?game_choice={game_choice}&username={username}&platform=epic"
+        safe_username = urllib.parse.quote(username)
+        url = f"{base_url}/search/?game_choice={game_choice}&username={safe_username}&platform=epic"
         
         try:
             print(f"Searching for '{username}'...", end=" ", flush=True)
