@@ -12,7 +12,7 @@ class Command(BaseCommand):
         parser.add_argument('clan_tag', type=str, help='The clan tag (e.g. #2Q2Q90JRC or 2Q2Q90JRC)')
 
     def handle(self, *args, **kwargs):
-        # Force reload .env to override stale VS Code terminal injections
+
         env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
         load_dotenv(env_path, override=True)
         
@@ -46,7 +46,7 @@ class Command(BaseCommand):
                 
             filename = "scraped_clan_tags.json"
             
-            # Load existing tags if the file already exists
+
             existing_tags = []
             if os.path.exists(filename):
                 try:
@@ -55,7 +55,7 @@ class Command(BaseCommand):
                 except json.JSONDecodeError:
                     pass
             
-            # Combine old and new tags, and remove duplicates using a set
+
             all_tags = list(set(existing_tags + tags))
             
             with open(filename, 'w') as f:

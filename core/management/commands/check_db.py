@@ -12,7 +12,7 @@ class Command(BaseCommand):
             snaps = CrowdsourcedStatSnapshot.objects.filter(game_choice=game)
             total_snaps = snaps.count()
             
-            # Group by username to track unique dates per player
+
             player_groups = {}
             for snap in snaps:
                 if snap.username not in player_groups:

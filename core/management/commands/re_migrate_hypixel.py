@@ -13,7 +13,7 @@ class Command(BaseCommand):
         
         self.stdout.write("Re-migrating Hypixel data from the original database...")
         
-        # Get all unique users from the old table
+
         player_ids = DailyStatSnapshot.objects.values_list('player_id', flat=True).distinct()
         
         migrated = 0
@@ -24,7 +24,7 @@ class Command(BaseCommand):
         for p_id in player_ids:
             try:
                 with transaction.atomic():
-                    # Get all snapshots for this player, sorted by insertion order (ID)
+
                     snaps = list(DailyStatSnapshot.objects.filter(player_id=p_id).order_by('id'))
                     count = len(snaps)
                     

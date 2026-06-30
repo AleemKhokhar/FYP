@@ -32,7 +32,7 @@ def predict_performance(norms, game_choice='hypixel'):
                 
                 cache_key = f"training_email_sent_{game_choice}"
                 if not cache.get(cache_key):
-                    # Dynamically get all registered admins from the database
+
                     admin_emails = list(User.objects.filter(is_superuser=True).values_list('email', flat=True))
                     valid_emails = [e for e in admin_emails if e]
                     
@@ -44,7 +44,7 @@ def predict_performance(norms, game_choice='hypixel'):
                             recipient_list=valid_emails,
                             fail_silently=True
                         )
-                        # Set cache so it doesn't spam emails every time someone searches
+
                         cache.set(cache_key, True, timeout=None)
                     
             if eligible_users >= 100:
