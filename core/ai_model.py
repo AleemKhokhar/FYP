@@ -40,7 +40,7 @@ def predict_performance(norms, game_choice='hypixel'):
                         send_mail(
                             subject=f"AI Ready for Training: {game_choice}",
                             message=f"The game '{game_choice}' has reached 100 eligible users.\nRun 'python manage.py train_ai {game_choice}'.",
-                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            from_email=settings.EMAIL_HOST_USER,
                             recipient_list=valid_emails,
                             fail_silently=True
                         )
