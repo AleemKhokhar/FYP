@@ -51,7 +51,8 @@ class Command(BaseCommand):
                 game_max_vals = {
                     'hypixel': [60000.0, 111672425.0, 569809640.0, 111672425.0, 111672425.0, 111672425.0, 111672425.0, 0.0],
                     'fortnite': [5.0, 20.0, 1000.0],
-                    'clash': [16.0, 5000.0, 2000.0]
+                    'clash': [16.0, 5000.0, 2000.0],
+                    'steam': [100.0, 0.0, 0.0]
                 }
                 max_vals = game_max_vals.get(game_choice, [1.0]*8)
                 
